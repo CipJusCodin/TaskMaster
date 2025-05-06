@@ -1,5 +1,4 @@
 // Enhanced task deletion functionality
-// This is a drop-in replacement for your delete.js file with improved functionality
 
 (function() {
     // Global set to track deleted task IDs to prevent them from being re-added
