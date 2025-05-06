@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster - Firebase To-Do App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading Overlay - Added This Missing Element -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <header>
+        <h1>TaskMaster</h1>
+        <p>Firebase To-Do App</p>
+    </header>
+    
+    <!-- Login Container -->
+    <div id="loginContainer" class="login-container">
+        <h2>Sign in to get started</h2>
+        <p>Connect with your account to access shared tasks</p>
+        <button id="emailLoginButton" class="login-btn">
+            <i class="fas fa-envelope"></i>
+            Sign in with Email
+        </button>
+        <div id="errorContainer" class="error-message hidden"></div>
+    </div>
+    
+    <!-- Main App Container -->
+    <div id="appContainer" class="container hidden">
+        <div class="dashboard">
+            <div class="dashboard-title">
+                <h2>Dashboard</h2>
+                <span id="currentDate"></span>
+            </div>
+            
+            <div class="user-info">
+                <img id="userAvatar" src="https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png" alt="User Avatar" class="user-avatar">
+                <div>
+                    <div id="userName" class="user-name">User Name</div>
+                    <div id="userEmail">user@example.com</div>
+                    <div class="sync-info">
+                        <div id="syncStatus" class="sync-status synced">
+                            <i class="fas fa-check-circle"></i> Synced
+                        </div>
+                        <span id="lastSyncTime"></span>
+                        <span id="logoutButton" class="logout-btn">Sign Out</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card primary">
+                    <i class="fas fa-tasks"></i>
+                    <div class="stat-value" id="totalTasks">0</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                
+                <div class="stat-card success">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="stat-value" id="completedTasks">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                
+                <div class="stat-card warning">
+                    <i class="fas fa-clock"></i>
+                    <div class="stat-value" id="pendingTasks">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                
+                <div class="stat-card danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div class="stat-value" id="overdueTasks">0</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+            </div>
+            
+            <h3>Today's Progress</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-target="allTasks">All Tasks</div>
+            <div class="tab" data-target="todayTasks">Today's Tasks</div>
+            <div class="tab" data-target="pendingTasks">Pending Tasks</div>
+            <div class="tab" data-target="myTasks">My Tasks</div>
+        </div>
+        
+        <!-- All Tasks Panel -->
+        <div class="panel active" id="allTasks">
+            <div class="task-controls">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search tasks..." id="searchTasks">
+                </div>
+                
+                <div class="filter-options">
+                    <select id="statusFilter">
+                        <option value="all">All Status</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                        <option value="overdue">Overdue</option>
+                    </select>
+                    
+                    <select id="priorityFilter">
+                        <option value="all">All Priorities</option>
+                        <option value="high">High Priority</option>
+                        <option value="medium">Medium Priority</option>
+                        <option value="low">Low Priority</option>
+                    </select>
+                    
+                    <select id="dateFilter">
+                        <option value="all">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="thisWeek">This Week</option>
+                    </select>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="addTaskBtn">
+                        <i class="fas fa-plus"></i> Add Task
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%"></th>
+                            <th style="width: 25%">Task</th>
+                            <th style="width: 12%">Date</th>
+                            <th style="width: 10%">Priority</th>
+                            <th style="width: 10%">Status</th>
+                            <th style="width: 18%">Created By</th>
+                            <th style="width: 20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allTasksTable">
+                        <!-- Tasks will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Today's Tasks Panel -->
+        <div class="panel" id="todayTasks">
+            <div class="task-controls">
+                <h3>Tasks for Today</h3>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="addTodayTaskBtn">
+                        <i class="fas fa-plus"></i> Add Task
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%"></th>
+                            <th style="width: 30%">Task</th>
+                            <th style="width: 15%">Priority</th>
+                            <th style="width: 15%">Status</th>
+                            <th style="width: 15%">Created By</th>
+                            <th style="width: 20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="todayTasksTable">
+                        <!-- Today's tasks will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pending Tasks Panel -->
+        <div class="panel" id="pendingTasks">
+            <div class="task-controls">
+                <h3>Pending & Overdue Tasks</h3>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%"></th>
+                            <th style="width: 25%">Task</th>
+                            <th style="width: 12%">Date</th>
+                            <th style="width: 10%">Priority</th>
+                            <th style="width: 10%">Status</th>
+                            <th style="width: 18%">Created By</th>
+                            <th style="width: 20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingTasksTable">
+                        <!-- Pending tasks will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- My Tasks Panel -->
+        <div class="panel" id="myTasks">
+            <div class="task-controls">
+                <h3>My Tasks</h3>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%"></th>
+                            <th style="width: 25%">Task</th>
+                            <th style="width: 12%">Date</th>
+                            <th style="width: 10%">Priority</th>
+                            <th style="width: 10%">Status</th>
+                            <th style="width: 18%">Last Updated</th>
+                            <th style="width: 20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myTasksTable">
+                        <!-- My tasks will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add/Edit Task Modal -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="taskModalTitle">Add New Task</h3>
+                <span class="modal-close" id="closeTaskModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="taskForm">
+                    <input type="hidden" id="taskId">
+                    <div class="form-group">
+                        <label class="form-label" for="taskName">Task Name</label>
+                        <input type="text" class="form-control" id="taskName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskDate">Due Date</label>
+                        <input type="date" class="form-control" id="taskDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskPriority">Priority</label>
+                        <select class="form-control" id="taskPriority">
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskNotes">Notes</label>
+                        <textarea class="form-control" id="taskNotes"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taskStatus">Status</label>
+                        <select class="form-control" id="taskStatus">
+                            <option value="pending" selected>Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelTaskBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveTaskBtn">Save Task</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Application scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="task-manager.js"></script>
+    <script src="ui-controller.js"></script>
+    <script src="app.js"></script>
+    <script src="delete.js"></script>
+</body>
+</html>
+
+
