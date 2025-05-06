@@ -47,7 +47,9 @@ function updateStats() {
     // Calculate overdue tasks (past due date and not completed)
     const todayFormatted = formatDate(today);
     
+    // Exclude recurring tasks from overdue count
     const overdue = tasks.filter(task => 
+        !task.recurring && // Only non-recurring tasks can be overdue
         new Date(task.date) < new Date(todayFormatted) && 
         task.status !== 'completed'
     ).length;
@@ -86,16 +88,25 @@ function renderAllTasks() {
     tasks.forEach(task => {
         const row = document.createElement('tr');
         
-        // Check if task is overdue
-        const isOverdue = new Date(task.date) < new Date(todayFormatted) && 
-                          task.status !== 'completed';
+        // Check if task is recurring
+        const isRecurring = task.recurring === true;
+        
+        // If it's recurring, add the recurring-task class
+        if (isRecurring) {
+            row.classList.add('recurring-task');
+        }
+        
+        // Check if task is overdue - recurring tasks are never overdue
+        const isOverdue = !isRecurring && 
+                         new Date(task.date) < new Date(todayFormatted) && 
+                         task.status !== 'completed';
         
         // Status styling
         let statusClass = '';
         let statusText = '';
         
         if (isOverdue) {
-            statusClass = 'status-failed'; // Use the failed style for overdue
+            statusClass = 'status-failed';
             statusText = 'Overdue';
             // Add the overdue class to the row
             row.classList.add('overdue-row');
@@ -133,18 +144,16 @@ function renderAllTasks() {
         // Format date for display
         const displayDate = new Date(task.date).toLocaleDateString('en-US');
         
-        // Removed the inline styling for overdue tasks
-        // const rowStyle = isOverdue ? 'background-color: #fff3cd;' : '';
-        // row.setAttribute('style', rowStyle);
-        
-        // Check if task was created by current user
-        const isMyTask = task.createdBy?.id === currentUser?.id;
+        // Task name with recurring badge if needed
+        const taskNameHtml = isRecurring ? 
+            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
+            task.name;
         
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
             </td>
-            <td>${task.name}</td>
+            <td>${taskNameHtml}</td>
             <td>${displayDate}</td>
             <td>
                 <span class="priority-badge ${priorityClass}"></span>
@@ -196,16 +205,25 @@ function renderTodayTasks() {
     todayTasks.forEach(task => {
         const row = document.createElement('tr');
         
+        // Check if task is recurring
+        const isRecurring = task.recurring === true;
+        
+        // If it's recurring, add the recurring-task class
+        if (isRecurring) {
+            row.classList.add('recurring-task');
+        }
+        
         // Status styling
         let statusClass = '';
         let statusText = '';
         
         // Check if task is overdue (unlikely for today's tasks, but possible if time is considered)
-        const isOverdue = new Date(task.date) < new Date(todayFormatted) && 
-                          task.status !== 'completed';
+        const isOverdue = !isRecurring && 
+                         new Date(task.date) < new Date(todayFormatted) && 
+                         task.status !== 'completed';
         
         if (isOverdue) {
-            statusClass = 'status-failed'; // Use the failed style for overdue
+            statusClass = 'status-failed';
             statusText = 'Overdue';
             // Add the overdue class to the row
             row.classList.add('overdue-row');
@@ -240,11 +258,16 @@ function renderTodayTasks() {
                 break;
         }
         
+        // Task name with recurring badge if needed
+        const taskNameHtml = isRecurring ? 
+            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
+            task.name;
+        
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
             </td>
-            <td>${task.name}</td>
+            <td>${taskNameHtml}</td>
             <td>
                 <span class="priority-badge ${priorityClass}"></span>
                 ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
@@ -305,16 +328,25 @@ function renderMyTasks() {
     myTasks.forEach(task => {
         const row = document.createElement('tr');
         
+        // Check if task is recurring
+        const isRecurring = task.recurring === true;
+        
+        // If it's recurring, add the recurring-task class
+        if (isRecurring) {
+            row.classList.add('recurring-task');
+        }
+        
         // Check if task is overdue
-        const isOverdue = new Date(task.date) < new Date(todayFormatted) && 
-                          task.status !== 'completed';
+        const isOverdue = !isRecurring && 
+                         new Date(task.date) < new Date(todayFormatted) && 
+                         task.status !== 'completed';
         
         // Status styling
         let statusClass = '';
         let statusText = '';
         
         if (isOverdue) {
-            statusClass = 'status-failed'; // Use the failed style for overdue
+            statusClass = 'status-failed';
             statusText = 'Overdue';
             // Add the overdue class to the row
             row.classList.add('overdue-row');
@@ -355,15 +387,16 @@ function renderMyTasks() {
             ? new Date(task.lastUpdated).toLocaleString('en-US')
             : 'Never';
         
-        // Removed the inline styling for overdue tasks
-        // const rowStyle = isOverdue ? 'background-color: #fff3cd;' : '';
-        // row.setAttribute('style', rowStyle);
+        // Task name with recurring badge if needed
+        const taskNameHtml = isRecurring ? 
+            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
+            task.name;
         
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
             </td>
-            <td>${task.name}</td>
+            <td>${taskNameHtml}</td>
             <td>${displayDate}</td>
             <td>
                 <span class="priority-badge ${priorityClass}"></span>
@@ -393,7 +426,7 @@ function renderMyTasks() {
 
 // Add event listeners for task actions
 function addTaskEventListeners() {
-    // Checkboxes
+    // Checkboxes - Updated for recurring tasks
     document.querySelectorAll('.checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const taskId = this.getAttribute('data-id');
@@ -406,7 +439,21 @@ function addTaskEventListeners() {
                 task.lastUpdatedBy = currentUser;
                 
                 // Save to Firestore
-                saveTask(task);
+                saveTask(task)
+                    .then(() => {
+                        // If this is a recurring task and it was just completed
+                        if (task.recurring === true && task.status === 'completed') {
+                            // Create next occurrence for tomorrow
+                            createNextOccurrence(task)
+                                .then(() => {
+                                    console.log('Next occurrence created successfully');
+                                })
+                                .catch(error => {
+                                    console.error('Error creating next occurrence:', error);
+                                    showError('Error creating recurring task: ' + error.message);
+                                });
+                        }
+                    });
             }
         });
     });
@@ -442,7 +489,7 @@ function addTaskEventListeners() {
     });
 }
 
-// Edit task
+// Edit task - Updated for recurring tasks
 function editTask(taskId) {
     const task = tasks.find(t => t.id === taskId);
     
@@ -453,6 +500,12 @@ function editTask(taskId) {
         document.getElementById('taskPriority').value = task.priority;
         document.getElementById('taskNotes').value = task.notes;
         document.getElementById('taskStatus').value = task.status;
+        
+        // Set recurring checkbox
+        const recurringCheckbox = document.getElementById('taskRecurring');
+        if (recurringCheckbox) {
+            recurringCheckbox.checked = task.recurring === true;
+        }
         
         document.getElementById('taskModalTitle').textContent = 'Edit Task';
         taskModal.classList.add('show');
@@ -508,7 +561,7 @@ function deleteTask(taskId) {
     }
 }
 
-// Render filtered tasks
+// Render filtered tasks - Updated for recurring tasks
 function renderFilteredTasks(filteredTasks) {
     allTasksTableEl.innerHTML = '';
     
@@ -527,16 +580,25 @@ function renderFilteredTasks(filteredTasks) {
     filteredTasks.forEach(task => {
         const row = document.createElement('tr');
         
-        // Check if task is overdue
-        const isOverdue = new Date(task.date) < new Date(todayFormatted) && 
-                          task.status !== 'completed';
+        // Check if task is recurring
+        const isRecurring = task.recurring === true;
+        
+        // If it's recurring, add the recurring-task class
+        if (isRecurring) {
+            row.classList.add('recurring-task');
+        }
+        
+        // Check if task is overdue - recurring tasks are never overdue
+        const isOverdue = !isRecurring && 
+                         new Date(task.date) < new Date(todayFormatted) && 
+                         task.status !== 'completed';
         
         // Status styling
         let statusClass = '';
         let statusText = '';
         
         if (isOverdue) {
-            statusClass = 'status-failed'; // Use the failed style for overdue
+            statusClass = 'status-failed';
             statusText = 'Overdue';
             // Add the overdue class to the row
             row.classList.add('overdue-row');
@@ -574,15 +636,16 @@ function renderFilteredTasks(filteredTasks) {
         // Format date for display
         const displayDate = new Date(task.date).toLocaleDateString('en-US');
         
-        // Removed the inline styling for overdue tasks
-        // const rowStyle = isOverdue ? 'background-color: #fff3cd;' : '';
-        // row.setAttribute('style', rowStyle);
-        
+        // Task name with recurring badge if needed
+        const taskNameHtml = isRecurring ? 
+            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
+            task.name;
+            
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
             </td>
-            <td>${task.name}</td>
+            <td>${taskNameHtml}</td>
             <td>${displayDate}</td>
             <td>
                 <span class="priority-badge ${priorityClass}"></span>
@@ -635,8 +698,10 @@ function applyFilters() {
     if (statusFilter !== 'all') {
         if (statusFilter === 'overdue') {
             // Show all overdue tasks (past due date and not completed)
+            // Exclude recurring tasks from overdue
             const todayFormatted = formatDate(today);
             filteredTasks = filteredTasks.filter(task => 
+                !task.recurring &&
                 new Date(task.date) < new Date(todayFormatted) && 
                 task.status !== 'completed'
             );
@@ -740,7 +805,7 @@ function setupUIEventListeners() {
         taskModal.classList.remove('show');
     });
     
-    // Save task button
+    // Save task button - Updated for recurring tasks
     document.getElementById('saveTaskBtn').addEventListener('click', function() {
         const taskId = document.getElementById('taskId').value;
         const taskName = document.getElementById('taskName').value;
@@ -748,6 +813,7 @@ function setupUIEventListeners() {
         const taskPriority = document.getElementById('taskPriority').value;
         const taskNotes = document.getElementById('taskNotes').value;
         const taskStatus = document.getElementById('taskStatus').value;
+        const taskRecurring = document.getElementById('taskRecurring').checked;
         
         if (!taskName || !taskDate) {
             alert('Please fill in all required fields');
@@ -764,6 +830,7 @@ function setupUIEventListeners() {
                 task.notes = taskNotes;
                 task.status = taskStatus;
                 task.completed = taskStatus === 'completed';
+                task.recurring = taskRecurring; // Add recurring property
                 task.lastUpdated = new Date().toISOString();
                 task.lastUpdatedBy = currentUser;
                 
@@ -786,6 +853,7 @@ function setupUIEventListeners() {
                 priority: taskPriority,
                 status: taskStatus,
                 completed: taskStatus === 'completed',
+                recurring: taskRecurring, // Add recurring property
                 createdAt: new Date().toISOString(),
                 createdBy: currentUser,
                 lastUpdated: new Date().toISOString(),

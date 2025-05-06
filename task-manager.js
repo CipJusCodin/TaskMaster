@@ -246,3 +246,57 @@ function updateLastSyncTime() {
     lastSyncTime = new Date();
     lastSyncTimeEl.textContent = `Last synced: ${lastSyncTime.toLocaleTimeString()}`;
 }
+
+// Create next occurrence of a recurring task
+function createNextOccurrence(completedTask) {
+    if (!completedTask.recurring) {
+        console.log('Task is not recurring, no next occurrence needed');
+        return Promise.resolve(null);
+    }
+    
+    console.log(`Creating next occurrence for recurring task: ${completedTask.name}`);
+    
+    // Create tomorrow's date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowFormatted = formatDate(tomorrow);
+    
+    // Create a new task for tomorrow
+    const newTask = {
+        id: generateId(),
+        name: completedTask.name,
+        date: tomorrowFormatted,
+        notes: completedTask.notes,
+        priority: completedTask.priority,
+        status: 'pending',
+        completed: false,
+        recurring: true, // Mark as recurring
+        parentTaskId: completedTask.id, // Reference to original task
+        recurrenceCount: (completedTask.recurrenceCount || 0) + 1, // Track number of recurrences
+        createdAt: new Date().toISOString(),
+        createdBy: completedTask.createdBy, // Same creator
+        lastUpdated: new Date().toISOString(),
+        lastUpdatedBy: currentUser
+    };
+    
+    console.log(`Next occurrence created with ID: ${newTask.id} for date: ${newTask.date}`);
+    
+    // Save the new task to Firestore
+    return saveTask(newTask)
+        .then(() => {
+            // Show a special message for recurring tasks
+            const successMsg = document.createElement('div');
+            successMsg.className = 'success-message';
+            successMsg.innerHTML = `<i class="fas fa-sync-alt"></i> Task "${completedTask.name}" completed for today and scheduled for tomorrow`;
+            document.body.appendChild(successMsg);
+            
+            // Remove success message after 3 seconds
+            setTimeout(() => {
+                if (successMsg.parentNode) {
+                    successMsg.parentNode.removeChild(successMsg);
+                }
+            }, 3000);
+            
+            return newTask;
+        });
+}
