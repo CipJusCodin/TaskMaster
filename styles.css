@@ -36,36 +36,21 @@ body {
     background-attachment: fixed;
 }
 
+/* Updated header styles */
 header {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color), #5a2fb2);
+    background: transparent; /* Remove gradient background */
     color: var(--text-primary);
     text-align: center;
-    padding: 1.8rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    padding: 1rem;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     margin-bottom: 10px;
+    box-shadow: none; /* Remove shadow */
 }
 
-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
-    animation: glow 3s infinite;
-}
-
-header::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 25%;
-    right: 25%;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.2);
+/* Remove the glowing line effects */
+header::before, header::after {
+    display: none;
 }
 
 @keyframes glow {
@@ -877,14 +862,36 @@ input[type="date"] {
     box-shadow: 0 0 15px rgba(244, 67, 54, 0.5);
 }
 
+/* Updated logo container and logo with hover effects */
 .logo-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 0.5rem;
+    transition: transform 0.3s ease;
 }
 
+/* Logo styling with hover effects */
 .logo {
-    max-width: 300px;
+    max-width: 280px;
     height: auto;
+    transition: all 0.4s ease;
+    filter: drop-shadow(0 0 8px rgba(174, 88, 255, 0.3));
+}
+
+/* Elegant hover effect */
+.logo-container:hover .logo {
+    transform: translateY(-2px) scale(1.03);
+    filter: drop-shadow(0 0 15px rgba(174, 88, 255, 0.6));
+}
+
+/* Add a subtle pulse animation for extra elegance */
+@keyframes subtle-pulse {
+    0% { opacity: 0.9; filter: drop-shadow(0 0 8px rgba(174, 88, 255, 0.3)); }
+    50% { opacity: 1; filter: drop-shadow(0 0 15px rgba(174, 88, 255, 0.6)); }
+    100% { opacity: 0.9; filter: drop-shadow(0 0 8px rgba(174, 88, 255, 0.3)); }
+}
+
+.logo-container:hover .logo {
+    animation: subtle-pulse 2s infinite ease-in-out;
 }
