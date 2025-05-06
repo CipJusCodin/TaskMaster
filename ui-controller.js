@@ -443,14 +443,14 @@ function addTaskEventListeners() {
                     .then(() => {
                         // If this is a recurring task and it was just completed
                         if (task.recurring === true && task.status === 'completed') {
-                            // Create next occurrence for tomorrow
-                            createNextOccurrence(task)
+                            // Mark for next day creation instead of immediate creation
+                            markRecurringTaskForNextDay(task)
                                 .then(() => {
-                                    console.log('Next occurrence created successfully');
+                                    console.log('Task marked for next day creation');
                                 })
                                 .catch(error => {
-                                    console.error('Error creating next occurrence:', error);
-                                    showError('Error creating recurring task: ' + error.message);
+                                    console.error('Error marking for next day:', error);
+                                    showError('Error marking recurring task: ' + error.message);
                                 });
                         }
                     });
@@ -512,23 +512,37 @@ function editTask(taskId) {
     }
 }
 
-// Delete task - FIXED VERSION
+// Delete task - Updated for handling recurring tasks
 function deleteTask(taskId) {
     // Find the task for logging purposes
     const taskToDelete = tasks.find(t => t.id === taskId);
-    const taskName = taskToDelete ? taskToDelete.name : 'Unknown task';
     
-    // Create a single reference to the delete confirmation action
-    const confirmDelete = confirm('Are you sure you want to delete this task?');
+    if (!taskToDelete) {
+        showError(`Error: Task with ID ${taskId} not found`);
+        return;
+    }
+    
+    const taskName = taskToDelete.name;
+    const isRecurring = taskToDelete.recurring === true;
+    const hasNextOccurrence = taskToDelete.nextOccurrenceDate != null;
+    
+    // Create confirmation message
+    let confirmMessage = 'Are you sure you want to delete this task?';
+    if (isRecurring) {
+        confirmMessage = 'This is a recurring task. Are you sure you want to delete it? It will not reappear.';
+    }
+    
+    const confirmDelete = confirm(confirmMessage);
     
     if (confirmDelete) {
         // Show loading indicator immediately
         showLoading();
         console.log(`Confirmed deletion for task: ${taskName} (ID: ${taskId})`);
+        console.log(`Task is recurring: ${isRecurring}, has next occurrence: ${hasNextOccurrence}`);
         
         // Use a single promise chain for the delete operation
         deleteTaskFromFirestore(taskId)
-            .then(() => {
+            .then(result => {
                 console.log(`Task successfully deleted from Firestore: ${taskName}`);
                 
                 // Remove from local array
@@ -543,7 +557,11 @@ function deleteTask(taskId) {
                 // Show success message
                 const successMsg = document.createElement('div');
                 successMsg.className = 'success-message';
-                successMsg.textContent = `Task "${taskName}" deleted successfully`;
+                if (isRecurring) {
+                    successMsg.innerHTML = `<i class="fas fa-calendar-times"></i> Recurring task "${taskName}" deleted and will not reappear`;
+                } else {
+                    successMsg.textContent = `Task "${taskName}" deleted successfully`;
+                }
                 document.body.appendChild(successMsg);
                 
                 // Remove success message after 3 seconds
@@ -690,7 +708,7 @@ function applyFilters() {
     if (searchTerm.trim() !== '') {
         filteredTasks = filteredTasks.filter(task => 
             task.name.toLowerCase().includes(searchTerm) ||
-            task.notes.toLowerCase().includes(searchTerm)
+            (task.notes && task.notes.toLowerCase().includes(searchTerm))
         );
     }
     
@@ -805,7 +823,7 @@ function setupUIEventListeners() {
         taskModal.classList.remove('show');
     });
     
-    // Save task button - Updated for recurring tasks
+    // Save task button - Updated for duplicate prevention
     document.getElementById('saveTaskBtn').addEventListener('click', function() {
         const taskId = document.getElementById('taskId').value;
         const taskName = document.getElementById('taskName').value;
@@ -824,13 +842,17 @@ function setupUIEventListeners() {
             // Edit existing task
             const task = tasks.find(t => t.id === taskId);
             if (task) {
+                // Store original name for duplicate check logic
+                const originalName = task.name;
+                
+                // Update task properties
                 task.name = taskName;
                 task.date = taskDate;
                 task.priority = taskPriority;
                 task.notes = taskNotes;
                 task.status = taskStatus;
                 task.completed = taskStatus === 'completed';
-                task.recurring = taskRecurring; // Add recurring property
+                task.recurring = taskRecurring;
                 task.lastUpdated = new Date().toISOString();
                 task.lastUpdatedBy = currentUser;
                 
@@ -839,6 +861,10 @@ function setupUIEventListeners() {
                     .then(() => {
                         // Close modal
                         taskModal.classList.remove('show');
+                    })
+                    .catch(error => {
+                        // Error is already handled in saveTask function
+                        // The modal stays open so the user can fix the duplicate
                     });
             }
         } else {
@@ -853,7 +879,7 @@ function setupUIEventListeners() {
                 priority: taskPriority,
                 status: taskStatus,
                 completed: taskStatus === 'completed',
-                recurring: taskRecurring, // Add recurring property
+                recurring: taskRecurring,
                 createdAt: new Date().toISOString(),
                 createdBy: currentUser,
                 lastUpdated: new Date().toISOString(),
@@ -865,6 +891,10 @@ function setupUIEventListeners() {
                 .then(() => {
                     // Close modal
                     taskModal.classList.remove('show');
+                })
+                .catch(error => {
+                    // Error is already handled in saveTask function
+                    // The modal stays open so the user can fix the duplicate
                 });
         }
     });
@@ -880,7 +910,7 @@ function setupUIEventListeners() {
         
         const filteredTasks = tasks.filter(task => 
             task.name.toLowerCase().includes(searchTerm) ||
-            task.notes.toLowerCase().includes(searchTerm)
+            (task.notes && task.notes.toLowerCase().includes(searchTerm))
         );
         
         renderFilteredTasks(filteredTasks);
