@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Loading Overlay - Added This Missing Element -->
+    <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
     </div>
@@ -88,7 +88,6 @@
         <div class="tabs">
             <div class="tab active" data-target="allTasks">All Tasks</div>
             <div class="tab" data-target="todayTasks">Today's Tasks</div>
-            <div class="tab" data-target="pendingTasks">Pending Tasks</div>
             <div class="tab" data-target="myTasks">My Tasks</div>
         </div>
         
@@ -175,32 +174,6 @@
                     </thead>
                     <tbody id="todayTasksTable">
                         <!-- Today's tasks will be added here dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Pending Tasks Panel -->
-        <div class="panel" id="pendingTasks">
-            <div class="task-controls">
-                <h3>Pending & Overdue Tasks</h3>
-            </div>
-            
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 5%"></th>
-                            <th style="width: 25%">Task</th>
-                            <th style="width: 12%">Date</th>
-                            <th style="width: 10%">Priority</th>
-                            <th style="width: 10%">Status</th>
-                            <th style="width: 18%">Created By</th>
-                            <th style="width: 20%">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pendingTasksTable">
-                        <!-- Pending tasks will be added here dynamically -->
                     </tbody>
                 </table>
             </div>
@@ -294,5 +267,3 @@
     <script src="delete.js"></script>
 </body>
 </html>
-
-

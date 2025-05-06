@@ -895,3 +895,21 @@ input[type="date"] {
 .logo-container:hover .logo {
     animation: subtle-pulse 2s infinite ease-in-out;
 }
+
+/* Updated overdue task styling */
+.status-badge.status-failed,
+.status-badge.overdue {
+    background-color: rgba(255, 76, 106, 0.2); /* Darker red with transparency */
+    color: var(--danger-color); /* Use the variable for danger color */
+}
+
+/* Add a new style for overdue rows - highlight with a subtle gradient */
+tr.overdue-row {
+    background: linear-gradient(to right, rgba(255, 76, 106, 0.05), rgba(255, 76, 106, 0.1)) !important;
+    border-left: 3px solid var(--danger-color) !important;
+}
+
+/* When hovering over an overdue row */
+tr.overdue-row:hover {
+    background: linear-gradient(to right, rgba(255, 76, 106, 0.1), rgba(255, 76, 106, 0.15)) !important;
+}
