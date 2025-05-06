@@ -143,12 +143,44 @@ h1 {
     pointer-events: none;
 }
 
+/* Enhanced dashboard title and date styles */
 .dashboard-title {
-    color: var(--primary-color);
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    color: var(--primary-color);
+}
+
+.title-with-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dashboard-logo {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    filter: drop-shadow(0 0 5px rgba(174, 88, 255, 0.6));
+}
+
+.date-container {
+    background: linear-gradient(135deg, rgba(174, 88, 255, 0.2), rgba(161, 94, 255, 0.05));
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+    font-weight: 500;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.date-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(174, 88, 255, 0.3);
 }
 
 .user-info {
@@ -791,6 +823,21 @@ textarea.form-control {
     
     .modal-content {
         width: 95%;
+    }
+    
+    /* Responsive adjustments for mobile - new additions */
+    .dashboard-title {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .title-with-logo {
+        margin-bottom: 0.5rem;
+    }
+    
+    .date-container {
+        align-self: flex-start;
+        font-size: 1rem;
     }
 }
 
