@@ -598,8 +598,23 @@ function setupUIEventListeners() {
         });
     });
     
-    // Add Task button
+    // Add Task button in All Tasks
     document.getElementById('addTaskBtn').addEventListener('click', function() {
+        // Reset form
+        document.getElementById('taskForm').reset();
+        document.getElementById('taskId').value = '';
+        
+        document.getElementById('taskDate').value = formatDate(today);
+        
+        // Update modal title
+        document.getElementById('taskModalTitle').textContent = 'Add New Task';
+        
+        // Show modal
+        taskModal.classList.add('show');
+    });
+    
+    // Add Task button in My Tasks
+    document.getElementById('addMyTaskBtn').addEventListener('click', function() {
         // Reset form
         document.getElementById('taskForm').reset();
         document.getElementById('taskId').value = '';
