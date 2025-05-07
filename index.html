@@ -94,13 +94,38 @@
         </div>
         
         <div class="tabs">
-            <div class="tab active" data-target="allTasks">All Tasks</div>
-            <div class="tab" data-target="todayTasks">Today's Tasks</div>
-            <div class="tab" data-target="myTasks">My Tasks</div>
+            <div class="tab active" data-target="myTasks">My Tasks</div>
+            <div class="tab" data-target="allTasks">All Tasks</div>
+        </div>
+        
+        <!-- My Tasks Panel -->
+        <div class="panel active" id="myTasks">
+            <div class="task-controls">
+                <h3>My Tasks</h3>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%"></th>
+                            <th style="width: 25%">Task</th>
+                            <th style="width: 12%">Date</th>
+                            <th style="width: 10%">Priority</th>
+                            <th style="width: 10%">Status</th>
+                            <th style="width: 18%">Last Updated</th>
+                            <th style="width: 20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myTasksTable">
+                        <!-- My tasks will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
         </div>
         
         <!-- All Tasks Panel -->
-        <div class="panel active" id="allTasks">
+        <div class="panel" id="allTasks">
             <div class="task-controls">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
@@ -152,62 +177,6 @@
                     </thead>
                     <tbody id="allTasksTable">
                         <!-- Tasks will be added here dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Today's Tasks Panel -->
-        <div class="panel" id="todayTasks">
-            <div class="task-controls">
-                <h3>Tasks for Today</h3>
-                <div class="action-buttons">
-                    <button class="btn btn-primary" id="addTodayTaskBtn">
-                        <i class="fas fa-plus"></i> Add Task
-                    </button>
-                </div>
-            </div>
-            
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 5%"></th>
-                            <th style="width: 30%">Task</th>
-                            <th style="width: 15%">Priority</th>
-                            <th style="width: 15%">Status</th>
-                            <th style="width: 15%">Created By</th>
-                            <th style="width: 20%">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="todayTasksTable">
-                        <!-- Today's tasks will be added here dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- My Tasks Panel -->
-        <div class="panel" id="myTasks">
-            <div class="task-controls">
-                <h3>My Tasks</h3>
-            </div>
-            
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 5%"></th>
-                            <th style="width: 25%">Task</th>
-                            <th style="width: 12%">Date</th>
-                            <th style="width: 10%">Priority</th>
-                            <th style="width: 10%">Status</th>
-                            <th style="width: 18%">Last Updated</th>
-                            <th style="width: 20%">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="myTasksTable">
-                        <!-- My tasks will be added here dynamically -->
                     </tbody>
                 </table>
             </div>

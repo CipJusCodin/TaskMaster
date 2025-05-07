@@ -20,7 +20,6 @@ const overdueTasksEl = document.getElementById('overdueTasks');
 const progressBarEl = document.getElementById('progressBar');
 
 const allTasksTableEl = document.getElementById('allTasksTable');
-const todayTasksTableEl = document.getElementById('todayTasksTable');
 const myTasksTableEl = document.getElementById('myTasksTable');
 
 const taskModal = document.getElementById('taskModal');
@@ -34,7 +33,6 @@ currentDateEl.textContent = today.toLocaleDateString('en-US', dateOptions);
 function updateTasksUI() {
     updateStats();
     renderAllTasks();
-    renderTodayTasks();
     renderMyTasks();
 }
 
@@ -179,119 +177,6 @@ function renderAllTasks() {
         `;
         
         allTasksTableEl.appendChild(row);
-    });
-    
-    // Add event listeners
-    addTaskEventListeners();
-}
-
-// Render today's tasks
-function renderTodayTasks() {
-    todayTasksTableEl.innerHTML = '';
-    
-    const todayFormatted = formatDate(today);
-    
-    const todayTasks = tasks.filter(task => task.date === todayFormatted);
-    
-    if (todayTasks.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="6" style="text-align: center;">No tasks for today</td>
-        `;
-        todayTasksTableEl.appendChild(row);
-        return;
-    }
-    
-    todayTasks.forEach(task => {
-        const row = document.createElement('tr');
-        
-        // Check if task is recurring
-        const isRecurring = task.recurring === true;
-        
-        // If it's recurring, add the recurring-task class
-        if (isRecurring) {
-            row.classList.add('recurring-task');
-        }
-        
-        // Status styling
-        let statusClass = '';
-        let statusText = '';
-        
-        // Check if task is overdue (unlikely for today's tasks, but possible if time is considered)
-        const isOverdue = !isRecurring && 
-                         new Date(task.date) < new Date(todayFormatted) && 
-                         task.status !== 'completed';
-        
-        if (isOverdue) {
-            statusClass = 'status-failed';
-            statusText = 'Overdue';
-            // Add the overdue class to the row
-            row.classList.add('overdue-row');
-        } else {
-            switch(task.status) {
-                case 'completed':
-                    statusClass = 'status-completed';
-                    statusText = 'Completed';
-                    break;
-                case 'pending':
-                    statusClass = 'status-pending';
-                    statusText = 'Pending';
-                    break;
-                case 'failed':
-                    statusClass = 'status-failed';
-                    statusText = 'Failed';
-                    break;
-            }
-        }
-        
-        // Priority styling
-        let priorityClass = '';
-        switch(task.priority) {
-            case 'high':
-                priorityClass = 'priority-high';
-                break;
-            case 'medium':
-                priorityClass = 'priority-medium';
-                break;
-            case 'low':
-                priorityClass = 'priority-low';
-                break;
-        }
-        
-        // Task name with recurring badge if needed
-        const taskNameHtml = isRecurring ? 
-            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
-            task.name;
-        
-        row.innerHTML = `
-            <td>
-                <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
-            </td>
-            <td>${taskNameHtml}</td>
-            <td>
-                <span class="priority-badge ${priorityClass}"></span>
-                ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-            </td>
-            <td>
-                <span class="status-badge ${statusClass}">
-                    ${statusText}
-                </span>
-            </td>
-            <td>
-                <span class="user-badge">
-                    <i class="fas fa-user"></i> ${task.createdBy?.name || 'Unknown User'}
-                </span>
-            </td>
-            <td>
-                <div class="table-actions">
-                    <i class="fas fa-edit action-icon edit-task" data-id="${task.id}"></i>
-                    <i class="fas fa-sticky-note action-icon view-notes" data-id="${task.id}" title="${task.notes}"></i>
-                    <i class="fas fa-trash action-icon delete-task" data-id="${task.id}"></i>
-                </div>
-            </td>
-        `;
-        
-        todayTasksTableEl.appendChild(row);
     });
     
     // Add event listeners
@@ -695,76 +580,6 @@ function renderFilteredTasks(filteredTasks) {
     addTaskEventListeners();
 }
 
-// Apply all filters
-function applyFilters() {
-    const statusFilter = document.getElementById('statusFilter').value;
-    const priorityFilter = document.getElementById('priorityFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
-    const searchTerm = document.getElementById('searchTasks').value.toLowerCase();
-    
-    let filteredTasks = tasks;
-    
-    // Apply search filter
-    if (searchTerm.trim() !== '') {
-        filteredTasks = filteredTasks.filter(task => 
-            task.name.toLowerCase().includes(searchTerm) ||
-            (task.notes && task.notes.toLowerCase().includes(searchTerm))
-        );
-    }
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-        if (statusFilter === 'overdue') {
-            // Show all overdue tasks (past due date and not completed)
-            // Exclude recurring tasks from overdue
-            const todayFormatted = formatDate(today);
-            filteredTasks = filteredTasks.filter(task => 
-                !task.recurring &&
-                new Date(task.date) < new Date(todayFormatted) && 
-                task.status !== 'completed'
-            );
-        } else {
-            // Normal status filtering
-            filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
-        }
-    }
-    
-    // Apply priority filter
-    if (priorityFilter !== 'all') {
-        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
-    }
-    
-    // Apply date filter
-    if (dateFilter !== 'all') {
-        const todayFormatted = formatDate(today);
-        
-        // Yesterday's date
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayFormatted = formatDate(yesterday);
-        
-        switch(dateFilter) {
-            case 'today':
-                filteredTasks = filteredTasks.filter(task => task.date === todayFormatted);
-                break;
-            case 'yesterday':
-                filteredTasks = filteredTasks.filter(task => task.date === yesterdayFormatted);
-                break;
-            case 'thisWeek':
-                const oneWeekAgo = new Date(today);
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                const oneWeekAgoFormatted = formatDate(oneWeekAgo);
-                
-                filteredTasks = filteredTasks.filter(task => 
-                    task.date >= oneWeekAgoFormatted && task.date <= todayFormatted
-                );
-                break;
-        }
-    }
-    
-    renderFilteredTasks(filteredTasks);
-}
-
 // Setup UI event listeners
 function setupUIEventListeners() {
     // Tab navigation
@@ -785,21 +600,6 @@ function setupUIEventListeners() {
     
     // Add Task button
     document.getElementById('addTaskBtn').addEventListener('click', function() {
-        // Reset form
-        document.getElementById('taskForm').reset();
-        document.getElementById('taskId').value = '';
-        
-        document.getElementById('taskDate').value = formatDate(today);
-        
-        // Update modal title
-        document.getElementById('taskModalTitle').textContent = 'Add New Task';
-        
-        // Show modal
-        taskModal.classList.add('show');
-    });
-    
-    // Add Today Task button
-    document.getElementById('addTodayTaskBtn').addEventListener('click', function() {
         // Reset form
         document.getElementById('taskForm').reset();
         document.getElementById('taskId').value = '';
