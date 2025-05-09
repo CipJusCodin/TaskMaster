@@ -91,6 +91,14 @@
             <div class="progress-bar-container">
                 <div class="progress-bar" id="progressBar" style="width: 0%"></div>
             </div>
+            
+            <!-- History Button - ADDED -->
+            <div class="dashboard-actions">
+                <button id="viewCompletedTasksBtn" class="btn-history" title="View completed tasks">
+                    <i class="fas fa-history"></i>
+                    <span>View Completed</span>
+                </button>
+            </div>
         </div>
         
         <div class="tabs">
@@ -239,6 +247,22 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="cancelTaskBtn">Cancel</button>
                 <button class="btn btn-primary" id="saveTaskBtn">Save Task</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Completed Tasks Modal - ADDED -->
+    <div class="completed-tasks-modal" id="completedTasksModal">
+        <div class="completed-modal-content">
+            <div class="completed-modal-header">
+                <h3 class="completed-modal-title">
+                    <i class="fas fa-history"></i>
+                    Completed Tasks for Today
+                </h3>
+                <span class="completed-modal-close" id="closeCompletedTasksModal">&times;</span>
+            </div>
+            <div class="completed-modal-body" id="completedTasksList">
+                <!-- Completed tasks will be added here dynamically -->
             </div>
         </div>
     </div>

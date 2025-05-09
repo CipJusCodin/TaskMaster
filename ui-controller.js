@@ -24,17 +24,17 @@ const myTasksTableEl = document.getElementById('myTasksTable');
 
 const taskModal = document.getElementById('taskModal');
 
-// Function to handle fading out and removing a task
+// Function to handle fading out task from UI but keeping in database
 function fadeOutAndRemoveTask(taskElement, taskId, task, isRecurring = false) {
     if (!taskElement) return; // Safety check
     
     // Apply fade-out animation class
     taskElement.classList.add('fade-out-task');
     
-    // Wait for animation to complete before removing from database
+    // Wait for animation to complete before updating task status
     setTimeout(() => {
         if (isRecurring) {
-            // For recurring tasks - mark as completed, then set up next occurrence
+            // For recurring tasks - handle as before with markRecurringTaskForNextDay
             task.completed = true;
             task.status = 'completed';
             task.lastUpdated = new Date().toISOString();
@@ -69,18 +69,31 @@ function fadeOutAndRemoveTask(taskElement, taskId, task, isRecurring = false) {
                     showError('Error saving task status: ' + error.message);
                 });
         } else {
-            // For regular tasks - delete after fade completes
-            deleteTaskFromFirestore(taskId)
+            // CHANGE: For regular tasks - mark as completed but DON'T delete from database
+            // Instead, update status and hide from UI
+            task.completed = true;
+            task.status = 'completed';
+            task.lastUpdated = new Date().toISOString();
+            task.lastUpdatedBy = currentUser;
+            task.completedAt = new Date().toISOString(); // Add completion timestamp
+            
+            // Save to Firestore (keep in database)
+            saveTask(task)
                 .then(() => {
-                    // Remove from local array
-                    tasks = tasks.filter(t => t.id !== taskId);
-                    // Update UI
-                    updateTasksUI();
+                    // Update the tasks array with the completed status
+                    const index = tasks.findIndex(t => t.id === taskId);
+                    if (index !== -1) {
+                        tasks[index] = task;
+                    }
+                    
+                    // Task has visually disappeared but is still in the database
+                    // Update progress bar which will now include this completed task
+                    updateProgressBarForActiveTab();
                     
                     // Show success message
                     const successMsg = document.createElement('div');
                     successMsg.className = 'success-message';
-                    successMsg.textContent = `Task "${task.name}" completed and removed`;
+                    successMsg.textContent = `Task "${task.name}" completed`;
                     document.body.appendChild(successMsg);
                     
                     // Remove success message after 3 seconds
@@ -91,11 +104,197 @@ function fadeOutAndRemoveTask(taskElement, taskId, task, isRecurring = false) {
                     }, 3000);
                 })
                 .catch(error => {
-                    console.error('Error deleting task:', error);
+                    console.error('Error updating task status:', error);
                     showError('Error completing task: ' + error.message);
                 });
         }
     }, 2000); // Match the CSS animation duration of 2s
+}
+
+// New function to schedule midnight cleanup of completed tasks
+function scheduleMidnightCleanup() {
+    // Calculate time until next midnight
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0); // Set to midnight (00:00:00)
+    
+    const timeUntilMidnight = tomorrow - now;
+    
+    console.log(`Scheduled cleanup of completed tasks in ${Math.round(timeUntilMidnight/1000/60)} minutes`);
+    
+    // Schedule the cleanup
+    setTimeout(() => {
+        // Run the cleanup
+        cleanupCompletedTasks();
+        
+        // Schedule the next day's cleanup
+        scheduleMidnightCleanup();
+    }, timeUntilMidnight);
+}
+
+// Function to clean up completed tasks at midnight
+function cleanupCompletedTasks() {
+    console.log('Running midnight cleanup of completed tasks');
+    
+    // Get yesterday's date
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayFormatted = formatDate(yesterday);
+    
+    // Find completed tasks from yesterday or earlier
+    const tasksToDelete = tasks.filter(task => 
+        task.status === 'completed' && 
+        (task.date <= yesterdayFormatted || // Task was due yesterday or earlier
+         (task.completedAt && new Date(task.completedAt).getDate() < new Date().getDate())) // Or was completed yesterday
+    );
+    
+    if (tasksToDelete.length === 0) {
+        console.log('No completed tasks to clean up');
+        return;
+    }
+    
+    console.log(`Found ${tasksToDelete.length} completed tasks to delete`);
+    
+    // Delete each task
+    const deletePromises = tasksToDelete.map(task => {
+        return deleteTaskFromFirestore(task.id)
+            .then(() => {
+                console.log(`Deleted completed task: ${task.name}`);
+                // Remove from local array
+                tasks = tasks.filter(t => t.id !== task.id);
+                return task.id;
+            })
+            .catch(error => {
+                console.error(`Error deleting task ${task.id}:`, error);
+                return null;
+            });
+    });
+    
+    // After all deletions complete
+    Promise.all(deletePromises)
+        .then(deletedIds => {
+            const successfulDeletes = deletedIds.filter(id => id !== null);
+            console.log(`Successfully deleted ${successfulDeletes.length} completed tasks during cleanup`);
+            
+            // Update the UI
+            updateTasksUI();
+        });
+}
+
+// Function to show completed tasks modal
+function showCompletedTasksModal() {
+    const completedTasksModal = document.getElementById('completedTasksModal');
+    const completedTasksList = document.getElementById('completedTasksList');
+    const todayFormatted = formatDate(today);
+    
+    // Clear previous content
+    completedTasksList.innerHTML = '';
+    
+    // Get today's completed tasks
+    let todayCompletedTasks = [];
+    
+    // Check which tab is active to determine which completed tasks to show
+    const activeTabId = document.querySelector('.tab.active').getAttribute('data-target');
+    if (activeTabId === 'myTasks') {
+        // Show current user's completed tasks
+        todayCompletedTasks = tasks.filter(task => 
+            task.date === todayFormatted && 
+            task.status === 'completed' &&
+            task.createdBy?.id === currentUser.id
+        );
+    } else {
+        // Show other users' completed tasks
+        todayCompletedTasks = tasks.filter(task => 
+            task.date === todayFormatted && 
+            task.status === 'completed' &&
+            task.createdBy?.id !== currentUser.id
+        );
+    }
+    
+    // If no completed tasks, show a message
+    if (todayCompletedTasks.length === 0) {
+        completedTasksList.innerHTML = `
+            <div class="no-completed-tasks">
+                <i class="fas fa-check-circle"></i>
+                <p>No completed tasks for today yet</p>
+            </div>
+        `;
+    } else {
+        // Sort completed tasks by completion time (most recent first)
+        todayCompletedTasks.sort((a, b) => {
+            if (!a.completedAt) return 1;
+            if (!b.completedAt) return -1;
+            return new Date(b.completedAt) - new Date(a.completedAt);
+        });
+        
+        // Add each completed task to the list
+        todayCompletedTasks.forEach(task => {
+            const completedTime = task.completedAt ? new Date(task.completedAt) : null;
+            const timeString = completedTime ? completedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unknown';
+            
+            // Priority styling
+            let priorityClass = '';
+            switch(task.priority) {
+                case 'high':
+                    priorityClass = 'priority-high';
+                    break;
+                case 'medium':
+                    priorityClass = 'priority-medium';
+                    break;
+                case 'low':
+                    priorityClass = 'priority-low';
+                    break;
+            }
+            
+            // Create task element
+            const taskElement = document.createElement('div');
+            taskElement.className = 'completed-task-item';
+            taskElement.innerHTML = `
+                <div class="completed-task-checkbox">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="completed-task-info">
+                    <div class="completed-task-name">${task.name}</div>
+                    <div class="completed-task-meta">
+                        <div class="completed-task-time">
+                            <i class="fas fa-clock"></i> ${timeString}
+                        </div>
+                        <div class="completed-task-priority">
+                            <span class="completed-priority-badge ${priorityClass}"></span>
+                            ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                        </div>
+                        ${task.createdBy?.id !== currentUser.id ? 
+                            `<div class="completed-task-user">
+                                <i class="fas fa-user"></i> ${task.createdBy?.name || 'Unknown User'}
+                            </div>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            completedTasksList.appendChild(taskElement);
+        });
+    }
+    
+    // Show the modal
+    completedTasksModal.classList.add('show');
+}
+
+// Setup function for completed tasks feature
+function setupCompletedTasksFeature() {
+    // Add event listener for history button
+    const viewCompletedTasksBtn = document.getElementById('viewCompletedTasksBtn');
+    if (viewCompletedTasksBtn) {
+        viewCompletedTasksBtn.addEventListener('click', showCompletedTasksModal);
+    }
+    
+    // Add event listener for close button
+    const closeCompletedTasksModal = document.getElementById('closeCompletedTasksModal');
+    if (closeCompletedTasksModal) {
+        closeCompletedTasksModal.addEventListener('click', function() {
+            document.getElementById('completedTasksModal').classList.remove('show');
+        });
+    }
 }
 
 // Set current date
@@ -110,14 +309,14 @@ function updateTasksUI() {
     renderMyTasks();
 }
 
-// Update dashboard stats
+// Update dashboard stats - MODIFIED for contextual progress bar
 function updateStats() {
+    const todayFormatted = formatDate(today);
+    
+    // Calculate overall task stats
     const total = tasks.length;
     const completed = tasks.filter(task => task.status === 'completed').length;
     const pending = tasks.filter(task => task.status === 'pending').length;
-    
-    // Calculate overdue tasks (past due date and not completed)
-    const todayFormatted = formatDate(today);
     
     // Exclude recurring tasks from overdue count
     const overdue = tasks.filter(task => 
@@ -126,27 +325,60 @@ function updateStats() {
         task.status !== 'completed'
     ).length;
     
+    // Update the dashboard stats
     totalTasksEl.textContent = total;
     completedTasksEl.textContent = completed;
     pendingTasksEl.textContent = pending;
     overdueTasksEl.textContent = overdue;
     
-    // Calculate progress for today's tasks
-    const todayTasks = tasks.filter(task => task.date === todayFormatted);
-    const todayCompleted = todayTasks.filter(task => task.status === 'completed').length;
+    // Calculate progress for the active tab
+    updateProgressBarForActiveTab();
+}
+
+// Updated progress bar calculation to include completed tasks
+function updateProgressBarForActiveTab() {
+    const todayFormatted = formatDate(today);
+    const activeTabId = document.querySelector('.tab.active').getAttribute('data-target');
+    
+    let todayTasks = [];
+    let todayCompleted = 0;
+    
+    if (activeTabId === 'myTasks') {
+        // For My Tasks tab - all current user's tasks for today (including completed ones)
+        todayTasks = tasks.filter(task => 
+            task.date === todayFormatted && 
+            task.createdBy?.id === currentUser.id
+        );
+        todayCompleted = todayTasks.filter(task => task.status === 'completed').length;
+    } else {
+        // For All Tasks tab - all other users' tasks for today (including completed ones)
+        todayTasks = tasks.filter(task => 
+            task.date === todayFormatted && 
+            task.createdBy?.id !== currentUser.id
+        );
+        todayCompleted = todayTasks.filter(task => task.status === 'completed').length;
+    }
+    
+    // Calculate the progress percentage
     const todayProgress = todayTasks.length > 0 
         ? (todayCompleted / todayTasks.length) * 100 
         : 0;
     
+    console.log(`Progress for ${activeTabId}: ${todayCompleted}/${todayTasks.length} = ${todayProgress.toFixed(1)}%`);
+    
+    // Update the progress bar
     progressBarEl.style.width = `${todayProgress}%`;
 }
 
-// Render all tasks - MODIFIED to exclude current user's tasks
+// Render all tasks - MODIFIED to exclude current user's tasks AND completed tasks
 function renderAllTasks() {
     allTasksTableEl.innerHTML = '';
     
-    // Filter out the current user's tasks for the "All Tasks" view
-    const otherUsersTasks = tasks.filter(task => task.createdBy?.id !== currentUser.id);
+    // Filter out the current user's tasks AND completed tasks for the "All Tasks" view
+    const otherUsersTasks = tasks.filter(task => 
+        task.createdBy?.id !== currentUser.id && 
+        task.status !== 'completed' // Don't show completed tasks in UI
+    );
     
     if (otherUsersTasks.length === 0) {
         const row = document.createElement('tr');
@@ -261,7 +493,7 @@ function renderAllTasks() {
     addTaskEventListeners();
 }
 
-// Render my tasks
+// Render my tasks - MODIFIED to exclude completed tasks from UI
 function renderMyTasks() {
     myTasksTableEl.innerHTML = '';
     
@@ -274,7 +506,11 @@ function renderMyTasks() {
         return;
     }
     
-    const myTasks = tasks.filter(task => task.createdBy?.id === currentUser.id);
+    // Filter for current user's tasks AND exclude completed tasks from display
+    const myTasks = tasks.filter(task => 
+        task.createdBy?.id === currentUser.id && 
+        task.status !== 'completed' // Don't show completed tasks in UI
+    );
     
     if (myTasks.length === 0) {
         const row = document.createElement('tr');
@@ -408,7 +644,7 @@ function addTaskEventListeners() {
                         statusBadge.textContent = 'Completed';
                     }
                     
-                    // Fade out and delete the task - without loading spinner
+                    // Fade out and handle task completion - without loading spinner
                     fadeOutAndRemoveTask(taskRow, taskId, task, task.recurring === true);
                     
                 } else {
@@ -666,7 +902,7 @@ function renderFilteredTasks(filteredTasks) {
     addTaskEventListeners();
 }
 
-// Function to apply all filters - MODIFIED to exclude current user's tasks
+// Function to apply all filters - MODIFIED to exclude current user's tasks and completed tasks
 function applyFilters() {
     const statusFilter = document.getElementById('statusFilter').value;
     const priorityFilter = document.getElementById('priorityFilter').value;
@@ -685,8 +921,11 @@ function applyFilters() {
     thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
     const thisWeekStartFormatted = formatDate(thisWeekStart);
     
-    // Start with only other users' tasks
-    let filteredTasks = tasks.filter(task => task.createdBy?.id !== currentUser.id);
+    // Start with only other users' PENDING tasks
+    let filteredTasks = tasks.filter(task => 
+        task.createdBy?.id !== currentUser.id && 
+        task.status !== 'completed'
+    );
     
     // Apply status filter
     if (statusFilter !== 'all') {
@@ -732,9 +971,9 @@ function applyFilters() {
     renderFilteredTasks(filteredTasks);
 }
 
-// Setup UI event listeners
+// Setup UI event listeners - MODIFIED to update progress bar on tab change
 function setupUIEventListeners() {
-    // Tab navigation
+    // Tab navigation - UPDATED to refresh progress bar on tab switch
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', function() {
             // Remove active class from all tabs
@@ -747,6 +986,9 @@ function setupUIEventListeners() {
             // Show corresponding panel
             const targetPanel = this.getAttribute('data-target');
             document.getElementById(targetPanel).classList.add('active');
+            
+            // Update progress bar for the active tab
+            updateProgressBarForActiveTab();
         });
     });
     
@@ -1029,4 +1271,10 @@ function showApp() {
     
     // Ensure loading overlay is hidden
     hideLoading();
+    
+    // Schedule the midnight cleanup
+    scheduleMidnightCleanup();
+    
+    // Setup completed tasks feature
+    setupCompletedTasksFeature();
 }
