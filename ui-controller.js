@@ -311,34 +311,103 @@ function renderMyTasks() {
 
 // Add event listeners for task actions
 function addTaskEventListeners() {
-    // Checkboxes - Updated for recurring tasks
+    // Checkboxes - UPDATED to delete completed tasks
     document.querySelectorAll('.checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const taskId = this.getAttribute('data-id');
             const task = tasks.find(t => t.id === taskId);
             
             if (task) {
-                task.completed = this.checked;
-                task.status = this.checked ? 'completed' : 'pending';
-                task.lastUpdated = new Date().toISOString();
-                task.lastUpdatedBy = currentUser;
-                
-                // Save to Firestore
-                saveTask(task)
-                    .then(() => {
-                        // If this is a recurring task and it was just completed
-                        if (task.recurring === true && task.status === 'completed') {
-                            // Mark for next day creation instead of immediate creation
-                            markRecurringTaskForNextDay(task)
-                                .then(() => {
-                                    console.log('Task marked for next day creation');
-                                })
-                                .catch(error => {
-                                    console.error('Error marking for next day:', error);
-                                    showError('Error marking recurring task: ' + error.message);
-                                });
-                        }
-                    });
+                // If checkbox is checked (task is completed)
+                if (this.checked) {
+                    // Show loading indicator
+                    showLoading();
+                    
+                    // For recurring tasks
+                    if (task.recurring === true) {
+                        // Mark completed status temporarily to trigger next day creation
+                        task.completed = true;
+                        task.status = 'completed';
+                        task.lastUpdated = new Date().toISOString();
+                        task.lastUpdatedBy = currentUser;
+                        
+                        // Save the completed status and then mark for next day
+                        saveTask(task)
+                            .then(() => {
+                                markRecurringTaskForNextDay(task)
+                                    .then(() => {
+                                        console.log('Recurring task marked for next day creation');
+                                        // Now delete the current instance of recurring task
+                                        deleteTaskFromFirestore(taskId)
+                                            .then(() => {
+                                                // Remove from local array
+                                                tasks = tasks.filter(t => t.id !== taskId);
+                                                // Update UI
+                                                updateTasksUI();
+                                                // Hide loading
+                                                hideLoading();
+                                            })
+                                            .catch(error => {
+                                                console.error('Error deleting recurring task:', error);
+                                                hideLoading();
+                                                showError('Error completing recurring task: ' + error.message);
+                                            });
+                                    })
+                                    .catch(error => {
+                                        console.error('Error marking for next day:', error);
+                                        hideLoading();
+                                        showError('Error preparing recurring task: ' + error.message);
+                                    });
+                            })
+                            .catch(error => {
+                                console.error('Error saving task status:', error);
+                                hideLoading();
+                                showError('Error saving task status: ' + error.message);
+                            });
+                    } else {
+                        // For regular tasks - delete immediately when completed
+                        deleteTaskFromFirestore(taskId)
+                            .then(() => {
+                                // Remove from local array
+                                tasks = tasks.filter(t => t.id !== taskId);
+                                // Update UI
+                                updateTasksUI();
+                                // Hide loading
+                                hideLoading();
+                                
+                                // Show success message
+                                const successMsg = document.createElement('div');
+                                successMsg.className = 'success-message';
+                                successMsg.textContent = `Task "${task.name}" completed and removed`;
+                                document.body.appendChild(successMsg);
+                                
+                                // Remove success message after 3 seconds
+                                setTimeout(() => {
+                                    if (successMsg.parentNode) {
+                                        successMsg.parentNode.removeChild(successMsg);
+                                    }
+                                }, 3000);
+                            })
+                            .catch(error => {
+                                console.error('Error deleting task:', error);
+                                hideLoading();
+                                showError('Error completing task: ' + error.message);
+                            });
+                    }
+                } else {
+                    // If checkbox is unchecked, just update the status
+                    task.completed = false;
+                    task.status = 'pending';
+                    task.lastUpdated = new Date().toISOString();
+                    task.lastUpdatedBy = currentUser;
+                    
+                    // Save to Firestore
+                    saveTask(task)
+                        .catch(error => {
+                            console.error('Error updating task status:', error);
+                            showError('Error updating task status: ' + error.message);
+                        });
+                }
             }
         });
     });
@@ -745,6 +814,71 @@ function setupUIEventListeners() {
     document.getElementById('dateFilter').addEventListener('change', function() {
         applyFilters();
     });
+}
+
+// Function to apply all filters
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priorityFilter = document.getElementById('priorityFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    
+    // Today's date for date filtering
+    const todayFormatted = formatDate(today);
+    
+    // Yesterday's date
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayFormatted = formatDate(yesterday);
+    
+    // This week's start (Sunday)
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
+    const thisWeekStartFormatted = formatDate(thisWeekStart);
+    
+    let filteredTasks = [...tasks];
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+        if (statusFilter === 'overdue') {
+            // Filter overdue tasks (not completed and past due date)
+            filteredTasks = filteredTasks.filter(task => 
+                !task.recurring && // Recurring tasks can't be overdue
+                new Date(task.date) < new Date(todayFormatted) && 
+                task.status !== 'completed'
+            );
+        } else {
+            // Filter by status
+            filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
+        }
+    }
+    
+    // Apply priority filter
+    if (priorityFilter !== 'all') {
+        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+    }
+    
+    // Apply date filter
+    if (dateFilter !== 'all') {
+        switch(dateFilter) {
+            case 'today':
+                filteredTasks = filteredTasks.filter(task => task.date === todayFormatted);
+                break;
+            case 'yesterday':
+                filteredTasks = filteredTasks.filter(task => task.date === yesterdayFormatted);
+                break;
+            case 'thisWeek':
+                filteredTasks = filteredTasks.filter(task => {
+                    // Check if task date is between this week's start (Sunday) and today
+                    const taskDate = new Date(task.date);
+                    return taskDate >= new Date(thisWeekStartFormatted) && 
+                           taskDate <= new Date(todayFormatted);
+                });
+                break;
+        }
+    }
+    
+    // Render filtered tasks
+    renderFilteredTasks(filteredTasks);
 }
 
 // COMPLETELY REWRITTEN: Update sync status function
