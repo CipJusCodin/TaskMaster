@@ -24,6 +24,80 @@ const myTasksTableEl = document.getElementById('myTasksTable');
 
 const taskModal = document.getElementById('taskModal');
 
+// Function to handle fading out and removing a task
+function fadeOutAndRemoveTask(taskElement, taskId, task, isRecurring = false) {
+    if (!taskElement) return; // Safety check
+    
+    // Apply fade-out animation class
+    taskElement.classList.add('fade-out-task');
+    
+    // Wait for animation to complete before removing from database
+    setTimeout(() => {
+        if (isRecurring) {
+            // For recurring tasks - mark as completed, then set up next occurrence
+            task.completed = true;
+            task.status = 'completed';
+            task.lastUpdated = new Date().toISOString();
+            task.lastUpdatedBy = currentUser;
+            
+            // Save the completed status and then mark for next day
+            saveTask(task)
+                .then(() => {
+                    markRecurringTaskForNextDay(task)
+                        .then(() => {
+                            console.log('Recurring task marked for next day creation');
+                            // Now delete the current instance of recurring task
+                            deleteTaskFromFirestore(taskId)
+                                .then(() => {
+                                    // Remove from local array
+                                    tasks = tasks.filter(t => t.id !== taskId);
+                                    // Update UI
+                                    updateTasksUI();
+                                })
+                                .catch(error => {
+                                    console.error('Error deleting recurring task:', error);
+                                    showError('Error completing recurring task: ' + error.message);
+                                });
+                        })
+                        .catch(error => {
+                            console.error('Error marking for next day:', error);
+                            showError('Error preparing recurring task: ' + error.message);
+                        });
+                })
+                .catch(error => {
+                    console.error('Error saving task status:', error);
+                    showError('Error saving task status: ' + error.message);
+                });
+        } else {
+            // For regular tasks - delete after fade completes
+            deleteTaskFromFirestore(taskId)
+                .then(() => {
+                    // Remove from local array
+                    tasks = tasks.filter(t => t.id !== taskId);
+                    // Update UI
+                    updateTasksUI();
+                    
+                    // Show success message
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'success-message';
+                    successMsg.textContent = `Task "${task.name}" completed and removed`;
+                    document.body.appendChild(successMsg);
+                    
+                    // Remove success message after 3 seconds
+                    setTimeout(() => {
+                        if (successMsg.parentNode) {
+                            successMsg.parentNode.removeChild(successMsg);
+                        }
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error deleting task:', error);
+                    showError('Error completing task: ' + error.message);
+                });
+        }
+    }, 2000); // Match the CSS animation duration of 2s
+}
+
 // Set current date
 const today = new Date();
 const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -311,7 +385,7 @@ function renderMyTasks() {
 
 // Add event listeners for task actions
 function addTaskEventListeners() {
-    // Checkboxes - UPDATED to delete completed tasks
+    // Checkboxes - UPDATED to fade out completed tasks without loading spinner
     document.querySelectorAll('.checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const taskId = this.getAttribute('data-id');
@@ -320,80 +394,19 @@ function addTaskEventListeners() {
             if (task) {
                 // If checkbox is checked (task is completed)
                 if (this.checked) {
-                    // Show loading indicator
-                    showLoading();
+                    // Get the task row element (parent of the checkbox)
+                    const taskRow = this.closest('tr');
                     
-                    // For recurring tasks
-                    if (task.recurring === true) {
-                        // Mark completed status temporarily to trigger next day creation
-                        task.completed = true;
-                        task.status = 'completed';
-                        task.lastUpdated = new Date().toISOString();
-                        task.lastUpdatedBy = currentUser;
-                        
-                        // Save the completed status and then mark for next day
-                        saveTask(task)
-                            .then(() => {
-                                markRecurringTaskForNextDay(task)
-                                    .then(() => {
-                                        console.log('Recurring task marked for next day creation');
-                                        // Now delete the current instance of recurring task
-                                        deleteTaskFromFirestore(taskId)
-                                            .then(() => {
-                                                // Remove from local array
-                                                tasks = tasks.filter(t => t.id !== taskId);
-                                                // Update UI
-                                                updateTasksUI();
-                                                // Hide loading
-                                                hideLoading();
-                                            })
-                                            .catch(error => {
-                                                console.error('Error deleting recurring task:', error);
-                                                hideLoading();
-                                                showError('Error completing recurring task: ' + error.message);
-                                            });
-                                    })
-                                    .catch(error => {
-                                        console.error('Error marking for next day:', error);
-                                        hideLoading();
-                                        showError('Error preparing recurring task: ' + error.message);
-                                    });
-                            })
-                            .catch(error => {
-                                console.error('Error saving task status:', error);
-                                hideLoading();
-                                showError('Error saving task status: ' + error.message);
-                            });
-                    } else {
-                        // For regular tasks - delete immediately when completed
-                        deleteTaskFromFirestore(taskId)
-                            .then(() => {
-                                // Remove from local array
-                                tasks = tasks.filter(t => t.id !== taskId);
-                                // Update UI
-                                updateTasksUI();
-                                // Hide loading
-                                hideLoading();
-                                
-                                // Show success message
-                                const successMsg = document.createElement('div');
-                                successMsg.className = 'success-message';
-                                successMsg.textContent = `Task "${task.name}" completed and removed`;
-                                document.body.appendChild(successMsg);
-                                
-                                // Remove success message after 3 seconds
-                                setTimeout(() => {
-                                    if (successMsg.parentNode) {
-                                        successMsg.parentNode.removeChild(successMsg);
-                                    }
-                                }, 3000);
-                            })
-                            .catch(error => {
-                                console.error('Error deleting task:', error);
-                                hideLoading();
-                                showError('Error completing task: ' + error.message);
-                            });
+                    // Immediately change the status badge to "Completed"
+                    const statusBadge = taskRow.querySelector('.status-badge');
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-completed';
+                        statusBadge.textContent = 'Completed';
                     }
+                    
+                    // Fade out and delete the task - without loading spinner
+                    fadeOutAndRemoveTask(taskRow, taskId, task, task.recurring === true);
+                    
                 } else {
                     // If checkbox is unchecked, just update the status
                     task.completed = false;
@@ -489,7 +502,7 @@ function deleteTask(taskId) {
     const confirmDelete = confirm(confirmMessage);
     
     if (confirmDelete) {
-        // Show loading indicator immediately
+        // Show loading indicator for the delete operation
         showLoading();
         console.log(`Confirmed deletion for task: ${taskName} (ID: ${taskId})`);
         console.log(`Task is recurring: ${isRecurring}, has next occurrence: ${hasNextOccurrence}`);

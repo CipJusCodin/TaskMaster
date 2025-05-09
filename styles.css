@@ -1030,3 +1030,35 @@ tr.recurring-task.overdue-row {
 tr.recurring-task.overdue-row:hover {
     background: linear-gradient(to right, rgba(174, 88, 255, 0.1), rgba(174, 88, 255, 0.15)) !important;
 }
+
+/* Task Fade-out Animation */
+@keyframes fadeOutTask {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
+
+.fade-out-task {
+    animation: fadeOutTask 2s ease forwards;
+    pointer-events: none; /* Prevent any interactions during fade out */
+}
+
+/* Ensure the row doesn't immediately collapse in height */
+.fade-out-task td {
+    transition: padding 2s ease;
+}
+
+/* For the final state after animation completes */
+.removing-task {
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
