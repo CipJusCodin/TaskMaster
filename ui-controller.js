@@ -141,14 +141,17 @@ function updateStats() {
     progressBarEl.style.width = `${todayProgress}%`;
 }
 
-// Render all tasks
+// Render all tasks - MODIFIED to exclude current user's tasks
 function renderAllTasks() {
     allTasksTableEl.innerHTML = '';
     
-    if (tasks.length === 0) {
+    // Filter out the current user's tasks for the "All Tasks" view
+    const otherUsersTasks = tasks.filter(task => task.createdBy?.id !== currentUser.id);
+    
+    if (otherUsersTasks.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td colspan="7" style="text-align: center;">No tasks found</td>
+            <td colspan="7" style="text-align: center;">No other users' tasks found</td>
         `;
         allTasksTableEl.appendChild(row);
         return;
@@ -157,7 +160,8 @@ function renderAllTasks() {
     // Today's date for checking overdue tasks
     const todayFormatted = formatDate(today);
     
-    tasks.forEach(task => {
+    // Use the filtered tasks instead of all tasks
+    otherUsersTasks.forEach(task => {
         const row = document.createElement('tr');
         
         // Check if task is recurring
@@ -546,7 +550,7 @@ function deleteTask(taskId) {
     }
 }
 
-// Render filtered tasks - Updated for recurring tasks
+// Render filtered tasks - Updated for consistent messaging
 function renderFilteredTasks(filteredTasks) {
     allTasksTableEl.innerHTML = '';
     
@@ -660,6 +664,72 @@ function renderFilteredTasks(filteredTasks) {
     
     // Add event listeners
     addTaskEventListeners();
+}
+
+// Function to apply all filters - MODIFIED to exclude current user's tasks
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priorityFilter = document.getElementById('priorityFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    
+    // Today's date for date filtering
+    const todayFormatted = formatDate(today);
+    
+    // Yesterday's date
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayFormatted = formatDate(yesterday);
+    
+    // This week's start (Sunday)
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
+    const thisWeekStartFormatted = formatDate(thisWeekStart);
+    
+    // Start with only other users' tasks
+    let filteredTasks = tasks.filter(task => task.createdBy?.id !== currentUser.id);
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+        if (statusFilter === 'overdue') {
+            // Filter overdue tasks (not completed and past due date)
+            filteredTasks = filteredTasks.filter(task => 
+                !task.recurring && // Recurring tasks can't be overdue
+                new Date(task.date) < new Date(todayFormatted) && 
+                task.status !== 'completed'
+            );
+        } else {
+            // Filter by status
+            filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
+        }
+    }
+    
+    // Apply priority filter
+    if (priorityFilter !== 'all') {
+        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+    }
+    
+    // Apply date filter
+    if (dateFilter !== 'all') {
+        switch(dateFilter) {
+            case 'today':
+                filteredTasks = filteredTasks.filter(task => task.date === todayFormatted);
+                break;
+            case 'yesterday':
+                filteredTasks = filteredTasks.filter(task => task.date === yesterdayFormatted);
+                break;
+            case 'thisWeek':
+                filteredTasks = filteredTasks.filter(task => {
+                    // Check if task date is between this week's start (Sunday) and today
+                    const taskDate = new Date(task.date);
+                    return taskDate >= new Date(thisWeekStartFormatted) && 
+                           taskDate <= new Date(todayFormatted);
+                });
+                break;
+        }
+    }
+    
+    // Render filtered tasks
+    renderFilteredTasks(filteredTasks);
 }
 
 // Setup UI event listeners
@@ -827,71 +897,6 @@ function setupUIEventListeners() {
     document.getElementById('dateFilter').addEventListener('change', function() {
         applyFilters();
     });
-}
-
-// Function to apply all filters
-function applyFilters() {
-    const statusFilter = document.getElementById('statusFilter').value;
-    const priorityFilter = document.getElementById('priorityFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
-    
-    // Today's date for date filtering
-    const todayFormatted = formatDate(today);
-    
-    // Yesterday's date
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayFormatted = formatDate(yesterday);
-    
-    // This week's start (Sunday)
-    const thisWeekStart = new Date(today);
-    thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
-    const thisWeekStartFormatted = formatDate(thisWeekStart);
-    
-    let filteredTasks = [...tasks];
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-        if (statusFilter === 'overdue') {
-            // Filter overdue tasks (not completed and past due date)
-            filteredTasks = filteredTasks.filter(task => 
-                !task.recurring && // Recurring tasks can't be overdue
-                new Date(task.date) < new Date(todayFormatted) && 
-                task.status !== 'completed'
-            );
-        } else {
-            // Filter by status
-            filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
-        }
-    }
-    
-    // Apply priority filter
-    if (priorityFilter !== 'all') {
-        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
-    }
-    
-    // Apply date filter
-    if (dateFilter !== 'all') {
-        switch(dateFilter) {
-            case 'today':
-                filteredTasks = filteredTasks.filter(task => task.date === todayFormatted);
-                break;
-            case 'yesterday':
-                filteredTasks = filteredTasks.filter(task => task.date === yesterdayFormatted);
-                break;
-            case 'thisWeek':
-                filteredTasks = filteredTasks.filter(task => {
-                    // Check if task date is between this week's start (Sunday) and today
-                    const taskDate = new Date(task.date);
-                    return taskDate >= new Date(thisWeekStartFormatted) && 
-                           taskDate <= new Date(todayFormatted);
-                });
-                break;
-        }
-    }
-    
-    // Render filtered tasks
-    renderFilteredTasks(filteredTasks);
 }
 
 // COMPLETELY REWRITTEN: Update sync status function
