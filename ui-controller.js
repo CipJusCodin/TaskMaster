@@ -730,10 +730,34 @@ function editTask(taskId) {
         document.getElementById('taskModalTitle').textContent = 'Edit Task';
         taskModal.classList.add('show');
         
-        // Focus on task name field with a slight delay
+        // Focus and scroll to task name field with a slight delay to ensure modal is visible
         setTimeout(() => {
-            document.getElementById('taskName').focus();
-        }, 100);
+            // Get the task name input element
+            const taskNameInput = document.getElementById('taskName');
+            
+            // Scroll the modal to make the input visible
+            taskNameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Set focus to trigger keyboard
+            taskNameInput.focus();
+            
+            // Special handling for iOS/mobile
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                // Tap the field programmatically to ensure keyboard appears
+                taskNameInput.click();
+                
+                // Force a reflow - sometimes helps with mobile quirks
+                void taskNameInput.offsetHeight;
+                
+                // Some mobile browsers need a slight delay
+                setTimeout(() => {
+                    taskNameInput.focus();
+                    // This trick can help force keyboard on stubborn mobile browsers
+                    taskNameInput.blur();
+                    taskNameInput.focus();
+                }, 100);
+            }
+        }, 300); // Increased delay for mobile
     }
 }
 
@@ -1021,7 +1045,7 @@ function setupUIEventListeners() {
         });
     });
     
-    // Add Task button in All Tasks
+    // Add Task button in All Tasks - UPDATED for mobile
     document.getElementById('addTaskBtn').addEventListener('click', function() {
         // Reset form
         document.getElementById('taskForm').reset();
@@ -1035,13 +1059,37 @@ function setupUIEventListeners() {
         // Show modal
         taskModal.classList.add('show');
         
-        // Focus on task name field
+        // Focus and scroll to task name field with a slight delay to ensure modal is visible
         setTimeout(() => {
-            document.getElementById('taskName').focus();
-        }, 100);
+            // Get the task name input element
+            const taskNameInput = document.getElementById('taskName');
+            
+            // Scroll the modal to make the input visible
+            taskNameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Set focus to trigger keyboard
+            taskNameInput.focus();
+            
+            // Special handling for iOS/mobile
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                // Tap the field programmatically to ensure keyboard appears
+                taskNameInput.click();
+                
+                // Force a reflow - sometimes helps with mobile quirks
+                void taskNameInput.offsetHeight;
+                
+                // Some mobile browsers need a slight delay
+                setTimeout(() => {
+                    taskNameInput.focus();
+                    // This trick can help force keyboard on stubborn mobile browsers
+                    taskNameInput.blur();
+                    taskNameInput.focus();
+                }, 100);
+            }
+        }, 300); // Increased delay for mobile
     });
     
-    // Add Task button in My Tasks
+    // Add Task button in My Tasks - UPDATED for mobile
     document.getElementById('addMyTaskBtn').addEventListener('click', function() {
         // Reset form
         document.getElementById('taskForm').reset();
@@ -1055,10 +1103,34 @@ function setupUIEventListeners() {
         // Show modal
         taskModal.classList.add('show');
         
-        // Focus on task name field
+        // Focus and scroll to task name field with a slight delay to ensure modal is visible
         setTimeout(() => {
-            document.getElementById('taskName').focus();
-        }, 100);
+            // Get the task name input element
+            const taskNameInput = document.getElementById('taskName');
+            
+            // Scroll the modal to make the input visible
+            taskNameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Set focus to trigger keyboard
+            taskNameInput.focus();
+            
+            // Special handling for iOS/mobile
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                // Tap the field programmatically to ensure keyboard appears
+                taskNameInput.click();
+                
+                // Force a reflow - sometimes helps with mobile quirks
+                void taskNameInput.offsetHeight;
+                
+                // Some mobile browsers need a slight delay
+                setTimeout(() => {
+                    taskNameInput.focus();
+                    // This trick can help force keyboard on stubborn mobile browsers
+                    taskNameInput.blur();
+                    taskNameInput.focus();
+                }, 100);
+            }
+        }, 300); // Increased delay for mobile
     });
     
     // Close modal button
