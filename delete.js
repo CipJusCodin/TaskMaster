@@ -441,7 +441,7 @@
     // Add the delete button to the UI only for the authorized admin user
     function addDeleteButton() {
         // Check if current user is the authorized admin
-        if (!currentUser || currentUser.email !== 'yath@taskmaster.com') {
+        if (!currentUser || currentUser.email !== 'yatharth@taskmaster.com') {
             // Not the admin user, don't add the button
             console.log('Delete button not added - user is not authorized admin');
             return;
