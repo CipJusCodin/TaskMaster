@@ -92,7 +92,7 @@
                 <div class="progress-bar" id="progressBar" style="width: 0%"></div>
             </div>
             
-            <!-- History Button - ADDED -->
+            <!-- History Button -->
             <div class="dashboard-actions">
                 <button id="viewCompletedTasksBtn" class="btn-history" title="View completed tasks">
                     <i class="fas fa-history"></i>
@@ -210,7 +210,7 @@
                         <label class="form-label" for="taskName">Task Name</label>
                         <input type="text" class="form-control" id="taskName" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group date-group">
                         <label class="form-label" for="taskDate">Due Date</label>
                         <input type="date" class="form-control" id="taskDate" required>
                     </div>
@@ -223,10 +223,6 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="taskNotes">Notes</label>
-                        <textarea class="form-control" id="taskNotes"></textarea>
-                    </div>
-                    <div class="form-group">
                         <label class="form-label" for="taskStatus">Status</label>
                         <select class="form-control" id="taskStatus">
                             <option value="pending" selected>Pending</option>
@@ -234,7 +230,7 @@
                             <option value="failed">Failed</option>
                         </select>
                     </div>
-                    <!-- New recurring task option -->
+                    <!-- Recurring task option -->
                     <div class="form-group recurring-option">
                         <label class="checkbox-label">
                             <input type="checkbox" id="taskRecurring"> 
@@ -251,7 +247,7 @@
         </div>
     </div>
     
-    <!-- Completed Tasks Modal - ADDED -->
+    <!-- Completed Tasks Modal -->
     <div class="completed-tasks-modal" id="completedTasksModal">
         <div class="completed-modal-content">
             <div class="completed-modal-header">

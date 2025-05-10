@@ -459,7 +459,6 @@ function renderAllTasks() {
             task.name;
         
         // CHANGE: Disable checkbox for tasks that don't belong to current user
-        // REMOVE TOOLTIPS: removed title attributes
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="checkbox disabled-checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''} disabled>
@@ -483,7 +482,6 @@ function renderAllTasks() {
             <td>
                 <div class="table-actions">
                     <i class="fas fa-edit action-icon edit-task disabled-action" data-id="${task.id}"></i>
-                    <i class="fas fa-sticky-note action-icon view-notes" data-id="${task.id}" title="${task.notes}"></i>
                     <i class="fas fa-trash action-icon delete-task disabled-action" data-id="${task.id}"></i>
                 </div>
             </td>
@@ -613,7 +611,6 @@ function renderMyTasks() {
             <td>
                 <div class="table-actions">
                     <i class="fas fa-edit action-icon edit-task" data-id="${task.id}"></i>
-                    <i class="fas fa-sticky-note action-icon view-notes" data-id="${task.id}" title="${task.notes}"></i>
                     <i class="fas fa-trash action-icon delete-task" data-id="${task.id}"></i>
                 </div>
             </td>
@@ -705,20 +702,6 @@ function addTaskEventListeners() {
             deleteTask(taskId);
         });
     });
-    
-    // View notes - Everyone can view notes, so no changes needed here
-    document.querySelectorAll('.view-notes').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const taskId = this.getAttribute('data-id');
-            const task = tasks.find(t => t.id === taskId);
-            
-            if (task && task.notes) {
-                alert(`Notes for "${task.name}":\n\n${task.notes}`);
-            } else {
-                alert('No notes available for this task.');
-            }
-        });
-    });
 }
 
 // Edit task - Updated for recurring tasks
@@ -736,7 +719,6 @@ function editTask(taskId) {
         document.getElementById('taskName').value = task.name;
         document.getElementById('taskDate').value = task.date;
         document.getElementById('taskPriority').value = task.priority;
-        document.getElementById('taskNotes').value = task.notes;
         document.getElementById('taskStatus').value = task.status;
         
         // Set recurring checkbox
@@ -747,6 +729,11 @@ function editTask(taskId) {
         
         document.getElementById('taskModalTitle').textContent = 'Edit Task';
         taskModal.classList.add('show');
+        
+        // Focus on task name field with a slight delay
+        setTimeout(() => {
+            document.getElementById('taskName').focus();
+        }, 100);
     }
 }
 
@@ -904,7 +891,6 @@ function renderFilteredTasks(filteredTasks) {
             task.name;
         
         // MODIFIED: Check if task belongs to current user to enable/disable checkbox
-        // REMOVED TOOLTIPS: removed title attributes
         const isOwnTask = task.createdBy?.id === currentUser.id;
         const checkboxAttributes = isOwnTask ? 
             `class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}` : 
@@ -933,7 +919,6 @@ function renderFilteredTasks(filteredTasks) {
             <td>
                 <div class="table-actions">
                     <i class="fas fa-edit action-icon edit-task ${isOwnTask ? '' : 'disabled-action'}" data-id="${task.id}"></i>
-                    <i class="fas fa-sticky-note action-icon view-notes" data-id="${task.id}" title="${task.notes}"></i>
                     <i class="fas fa-trash action-icon delete-task ${isOwnTask ? '' : 'disabled-action'}" data-id="${task.id}"></i>
                 </div>
             </td>
@@ -1049,6 +1034,11 @@ function setupUIEventListeners() {
         
         // Show modal
         taskModal.classList.add('show');
+        
+        // Focus on task name field
+        setTimeout(() => {
+            document.getElementById('taskName').focus();
+        }, 100);
     });
     
     // Add Task button in My Tasks
@@ -1064,6 +1054,11 @@ function setupUIEventListeners() {
         
         // Show modal
         taskModal.classList.add('show');
+        
+        // Focus on task name field
+        setTimeout(() => {
+            document.getElementById('taskName').focus();
+        }, 100);
     });
     
     // Close modal button
@@ -1082,7 +1077,6 @@ function setupUIEventListeners() {
         const taskName = document.getElementById('taskName').value;
         const taskDate = document.getElementById('taskDate').value;
         const taskPriority = document.getElementById('taskPriority').value;
-        const taskNotes = document.getElementById('taskNotes').value;
         const taskStatus = document.getElementById('taskStatus').value;
         const taskRecurring = document.getElementById('taskRecurring').checked;
         
@@ -1108,7 +1102,6 @@ function setupUIEventListeners() {
                 task.name = taskName;
                 task.date = taskDate;
                 task.priority = taskPriority;
-                task.notes = taskNotes;
                 task.status = taskStatus;
                 task.completed = taskStatus === 'completed';
                 task.recurring = taskRecurring;
@@ -1134,7 +1127,6 @@ function setupUIEventListeners() {
                 id: newTaskId,
                 name: taskName,
                 date: taskDate,
-                notes: taskNotes,
                 priority: taskPriority,
                 status: taskStatus,
                 completed: taskStatus === 'completed',
@@ -1168,8 +1160,7 @@ function setupUIEventListeners() {
         }
         
         const filteredTasks = tasks.filter(task => 
-            task.name.toLowerCase().includes(searchTerm) ||
-            (task.notes && task.notes.toLowerCase().includes(searchTerm))
+            task.name.toLowerCase().includes(searchTerm)
         );
         
         renderFilteredTasks(filteredTasks);
