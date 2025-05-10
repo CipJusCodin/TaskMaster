@@ -1252,6 +1252,34 @@ function setupUIEventListeners() {
     document.getElementById('dateFilter').addEventListener('change', function() {
         applyFilters();
     });
+
+    
+    // Add this to the setupUIEventListeners function in ui-controller.js
+
+    // Allow Enter key to save task instead of refreshing the page
+    const taskForm = document.getElementById('taskForm');
+    if (taskForm) {
+        // Prevent default form submission
+        taskForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            return false;
+        });
+        
+        // Add keydown listener to the form
+        taskForm.addEventListener('keydown', function(event) {
+            // Check if Enter key was pressed (key code 13)
+            if (event.key === 'Enter' || event.keyCode === 13) {
+                // Prevent the default action (form submission/page refresh)
+                event.preventDefault();
+                
+                // Trigger the save task button click
+                document.getElementById('saveTaskBtn').click();
+                
+                // Return false to ensure no other action is taken
+                return false;
+            }
+        });
+    }
 }
 
 // COMPLETELY REWRITTEN: Update sync status function
