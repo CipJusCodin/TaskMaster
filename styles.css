@@ -1365,3 +1365,55 @@ input[type="date"] {
         padding-bottom: 3rem;
     }
 }
+
+.progress-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 1rem 0 2rem;
+    gap: 15px; /* Increased spacing between progress bar and button */
+}
+
+.progress-bar-container {
+    flex: 1;
+    height: 14px; /* Slightly increased height to match larger button */
+    background-color: var(--background-light);
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(to right, var(--success-color), var(--primary-color));
+    border-radius: 7px;
+    transition: width 0.4s ease;
+}
+
+.btn-history-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color); /* Purple background */
+    color: white; /* White icon for better contrast */
+    border: none;
+    border-radius: 8px; /* Rounded corners but square shape */
+    width: 40px; /* Increased from 32px */
+    height: 40px; /* Increased from 32px */
+    font-size: 1.2rem; /* Increased from 1rem */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(174, 88, 255, 0.3); /* Matching shadow */
+}
+
+.btn-history-icon:hover {
+    background-color: var(--secondary-color); /* Slightly darker purple on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(174, 88, 255, 0.5); /* Enhanced glow effect */
+}
+
+/* Remove the old dashboard-actions styling or keep it for other actions */
+.dashboard-actions {
+    display: none; /* Hide the old container */
+}
+
+/* These styles will work for both mobile and desktop */

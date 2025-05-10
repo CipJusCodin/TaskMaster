@@ -52,6 +52,65 @@
                 max-width: 150px;
             }
         }
+
+        /* Progress header styles */
+        .progress-header {
+            margin-bottom: 10px;
+        }
+        
+        /* New progress container styles */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin: 1rem 0 2rem;
+            gap: 15px;
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            height: 14px;
+            background-color: var(--background-light);
+            border-radius: 7px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, var(--success-color), var(--primary-color));
+            border-radius: 7px;
+            transition: width 0.4s ease;
+        }
+
+        .btn-history-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(174, 88, 255, 0.3);
+        }
+
+        .btn-history-icon:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(174, 88, 255, 0.5);
+        }
+
+        /* Hide the old dashboard-actions */
+        .dashboard-actions {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -131,16 +190,15 @@
                 </div>
             </div>
             
-            <h3>Today's Progress</h3>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+            <div class="progress-header">
+                <h3>Today's Progress</h3>
             </div>
-            
-            <!-- History Button -->
-            <div class="dashboard-actions">
-                <button id="viewCompletedTasksBtn" class="btn-history" title="View completed tasks">
+            <div class="progress-container">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <button id="viewCompletedTasksBtn" class="btn-history-icon" title="View completed tasks">
                     <i class="fas fa-history"></i>
-                    <span>View Completed</span>
                 </button>
             </div>
         </div>
