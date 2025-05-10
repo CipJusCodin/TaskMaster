@@ -118,12 +118,6 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
     </div>
-
-    <!-- <header>
-        <div class="logo-container">
-            <img src="images/taskmaster-logo.svg" alt="TaskMaster Logo" class="logo">
-        </div>
-    </header> -->
     
     <!-- Login Container -->
     <div id="loginContainer" class="login-container">
@@ -239,37 +233,10 @@
             </div>
         </div>
         
-        <!-- All Tasks Panel -->
+        <!-- All Tasks Panel - SIMPLIFIED without filters -->
         <div class="panel" id="allTasks">
             <div class="task-controls">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Search tasks..." id="searchTasks">
-                </div>
-                
-                <div class="filter-options">
-                    <select id="statusFilter">
-                        <option value="all">All Status</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="overdue">Overdue</option>
-                    </select>
-                    
-                    <select id="priorityFilter">
-                        <option value="all">All Priorities</option>
-                        <option value="high">High Priority</option>
-                        <option value="medium">Medium Priority</option>
-                        <option value="low">Low Priority</option>
-                    </select>
-                    
-                    <select id="dateFilter">
-                        <option value="all">All Dates</option>
-                        <option value="today">Today</option>
-                        <option value="yesterday">Yesterday</option>
-                        <option value="thisWeek">This Week</option>
-                    </select>
-                </div>
-                
+                <h3>All Tasks</h3>
                 <div class="action-buttons">
                     <button class="btn btn-primary" id="addTaskBtn">
                         <i class="fas fa-plus"></i> Add Task

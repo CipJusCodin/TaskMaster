@@ -24,6 +24,36 @@ const myTasksTableEl = document.getElementById('myTasksTable');
 
 const taskModal = document.getElementById('taskModal');
 
+// Custom sort function for tasks
+function sortTasks(tasksArray) {
+    const todayFormatted = formatDate(new Date());
+    
+    return tasksArray.sort((a, b) => {
+        // First check: Overdue vs. not overdue
+        const aIsOverdue = !a.recurring && new Date(a.date) < new Date(todayFormatted) && a.status !== 'completed';
+        const bIsOverdue = !b.recurring && new Date(b.date) < new Date(todayFormatted) && b.status !== 'completed';
+        
+        if (aIsOverdue && !bIsOverdue) return -1; // a is overdue, b is not -> a comes first
+        if (!aIsOverdue && bIsOverdue) return 1;  // b is overdue, a is not -> b comes first
+        
+        // Second check: Today's tasks vs. future tasks
+        const aIsToday = a.date === todayFormatted;
+        const bIsToday = b.date === todayFormatted;
+        
+        if (aIsToday && !bIsToday) return -1; // a is today, b is not -> a comes first
+        if (!aIsToday && bIsToday) return 1;  // b is today, a is not -> b comes first
+        
+        // Third check: Sort by date (for future tasks)
+        if (a.date !== b.date) {
+            return new Date(a.date) - new Date(b.date); // Sort by date ascending
+        }
+        
+        // Fourth check: If dates are the same, sort by priority
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority]; // High priority comes first
+    });
+}
+
 // Function to handle fading out task from UI but keeping in database
 function fadeOutAndRemoveTask(taskElement, taskId, task, isRecurring = false) {
     if (!taskElement) return; // Safety check
@@ -370,8 +400,139 @@ function updateProgressBarForActiveTab() {
     progressBarEl.style.width = `${todayProgress}%`;
 }
 
-// Render all tasks - MODIFIED to exclude current user's tasks AND completed tasks
-// ALSO modified to disable checkboxes and actions for tasks not owned by current user
+// Render my tasks - MODIFIED to exclude completed tasks from UI and sort tasks
+function renderMyTasks() {
+    myTasksTableEl.innerHTML = '';
+    
+    if (!currentUser) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="7" style="text-align: center;">Please sign in to view your tasks</td>
+        `;
+        myTasksTableEl.appendChild(row);
+        return;
+    }
+    
+    // Filter for current user's tasks AND exclude completed tasks from display
+    const myTasks = tasks.filter(task => 
+        task.createdBy?.id === currentUser.id && 
+        task.status !== 'completed' // Don't show completed tasks in UI
+    );
+    
+    if (myTasks.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="7" style="text-align: center;">You haven't created any tasks yet</td>
+        `;
+        myTasksTableEl.appendChild(row);
+        return;
+    }
+    
+    // Sort tasks before rendering
+    const sortedTasks = sortTasks([...myTasks]);
+    
+    // Today's date for checking overdue tasks
+    const todayFormatted = formatDate(today);
+    
+    sortedTasks.forEach(task => {
+        const row = document.createElement('tr');
+        
+        // Check if task is recurring
+        const isRecurring = task.recurring === true;
+        
+        // If it's recurring, add the recurring-task class
+        if (isRecurring) {
+            row.classList.add('recurring-task');
+        }
+        
+        // Check if task is overdue
+        const isOverdue = !isRecurring && 
+                         new Date(task.date) < new Date(todayFormatted) && 
+                         task.status !== 'completed';
+        
+        // Status styling
+        let statusClass = '';
+        let statusText = '';
+        
+        if (isOverdue) {
+            statusClass = 'status-failed';
+            statusText = 'Overdue';
+            // Add the overdue class to the row
+            row.classList.add('overdue-row');
+        } else {
+            switch(task.status) {
+                case 'completed':
+                    statusClass = 'status-completed';
+                    statusText = 'Completed';
+                    break;
+                case 'pending':
+                    statusClass = 'status-pending';
+                    statusText = 'Pending';
+                    break;
+                case 'failed':
+                    statusClass = 'status-failed';
+                    statusText = 'Failed';
+                    break;
+            }
+        }
+        
+        // Priority styling
+        let priorityClass = '';
+        switch(task.priority) {
+            case 'high':
+                priorityClass = 'priority-high';
+                break;
+            case 'medium':
+                priorityClass = 'priority-medium';
+                break;
+            case 'low':
+                priorityClass = 'priority-low';
+                break;
+        }
+        
+        // Format date for display
+        const displayDate = new Date(task.date).toLocaleDateString('en-US');
+        const lastUpdated = task.lastUpdated 
+            ? new Date(task.lastUpdated).toLocaleString('en-US')
+            : 'Never';
+        
+        // Task name with recurring badge if needed
+        const taskNameHtml = isRecurring ? 
+            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
+            task.name;
+        
+        row.innerHTML = `
+            <td>
+                <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
+            </td>
+            <td>${taskNameHtml}</td>
+            <td>${displayDate}</td>
+            <td>
+                <span class="priority-badge ${priorityClass}"></span>
+                ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+            </td>
+            <td>
+                <span class="status-badge ${statusClass}">
+                    ${statusText}
+                </span>
+            </td>
+            <td>${lastUpdated}</td>
+            <td>
+                <div class="table-actions">
+                    <i class="fas fa-edit action-icon edit-task" data-id="${task.id}"></i>
+                    <i class="fas fa-trash action-icon delete-task" data-id="${task.id}"></i>
+                </div>
+            </td>
+        `;
+        
+        myTasksTableEl.appendChild(row);
+    });
+    
+    // Add event listeners
+    addTaskEventListeners();
+}
+
+// Render all tasks - MODIFIED to exclude current user's tasks, exclude completed tasks, and sort tasks
 function renderAllTasks() {
     allTasksTableEl.innerHTML = '';
     
@@ -390,11 +551,14 @@ function renderAllTasks() {
         return;
     }
     
+    // Sort tasks before rendering
+    const sortedTasks = sortTasks([...otherUsersTasks]);
+    
     // Today's date for checking overdue tasks
     const todayFormatted = formatDate(today);
     
-    // Use the filtered tasks instead of all tasks
-    otherUsersTasks.forEach(task => {
+    // Use the sorted tasks for rendering
+    sortedTasks.forEach(task => {
         const row = document.createElement('tr');
         
         // Check if task is recurring
@@ -488,135 +652,6 @@ function renderAllTasks() {
         `;
         
         allTasksTableEl.appendChild(row);
-    });
-    
-    // Add event listeners
-    addTaskEventListeners();
-}
-
-// Render my tasks - MODIFIED to exclude completed tasks from UI
-function renderMyTasks() {
-    myTasksTableEl.innerHTML = '';
-    
-    if (!currentUser) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="7" style="text-align: center;">Please sign in to view your tasks</td>
-        `;
-        myTasksTableEl.appendChild(row);
-        return;
-    }
-    
-    // Filter for current user's tasks AND exclude completed tasks from display
-    const myTasks = tasks.filter(task => 
-        task.createdBy?.id === currentUser.id && 
-        task.status !== 'completed' // Don't show completed tasks in UI
-    );
-    
-    if (myTasks.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="7" style="text-align: center;">You haven't created any tasks yet</td>
-        `;
-        myTasksTableEl.appendChild(row);
-        return;
-    }
-    
-    // Today's date for checking overdue tasks
-    const todayFormatted = formatDate(today);
-    
-    myTasks.forEach(task => {
-        const row = document.createElement('tr');
-        
-        // Check if task is recurring
-        const isRecurring = task.recurring === true;
-        
-        // If it's recurring, add the recurring-task class
-        if (isRecurring) {
-            row.classList.add('recurring-task');
-        }
-        
-        // Check if task is overdue
-        const isOverdue = !isRecurring && 
-                         new Date(task.date) < new Date(todayFormatted) && 
-                         task.status !== 'completed';
-        
-        // Status styling
-        let statusClass = '';
-        let statusText = '';
-        
-        if (isOverdue) {
-            statusClass = 'status-failed';
-            statusText = 'Overdue';
-            // Add the overdue class to the row
-            row.classList.add('overdue-row');
-        } else {
-            switch(task.status) {
-                case 'completed':
-                    statusClass = 'status-completed';
-                    statusText = 'Completed';
-                    break;
-                case 'pending':
-                    statusClass = 'status-pending';
-                    statusText = 'Pending';
-                    break;
-                case 'failed':
-                    statusClass = 'status-failed';
-                    statusText = 'Failed';
-                    break;
-            }
-        }
-        
-        // Priority styling
-        let priorityClass = '';
-        switch(task.priority) {
-            case 'high':
-                priorityClass = 'priority-high';
-                break;
-            case 'medium':
-                priorityClass = 'priority-medium';
-                break;
-            case 'low':
-                priorityClass = 'priority-low';
-                break;
-        }
-        
-        // Format date for display
-        const displayDate = new Date(task.date).toLocaleDateString('en-US');
-        const lastUpdated = task.lastUpdated 
-            ? new Date(task.lastUpdated).toLocaleString('en-US')
-            : 'Never';
-        
-        // Task name with recurring badge if needed
-        const taskNameHtml = isRecurring ? 
-            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
-            task.name;
-        
-        row.innerHTML = `
-            <td>
-                <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
-            </td>
-            <td>${taskNameHtml}</td>
-            <td>${displayDate}</td>
-            <td>
-                <span class="priority-badge ${priorityClass}"></span>
-                ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-            </td>
-            <td>
-                <span class="status-badge ${statusClass}">
-                    ${statusText}
-                </span>
-            </td>
-            <td>${lastUpdated}</td>
-            <td>
-                <div class="table-actions">
-                    <i class="fas fa-edit action-icon edit-task" data-id="${task.id}"></i>
-                    <i class="fas fa-trash action-icon delete-task" data-id="${task.id}"></i>
-                </div>
-            </td>
-        `;
-        
-        myTasksTableEl.appendChild(row);
     });
     
     // Add event listeners
@@ -834,197 +869,7 @@ function deleteTask(taskId) {
     }
 }
 
-// Render filtered tasks - MODIFIED to add permission restrictions
-function renderFilteredTasks(filteredTasks) {
-    allTasksTableEl.innerHTML = '';
-    
-    if (filteredTasks.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="7" style="text-align: center;">No tasks match your filters</td>
-        `;
-        allTasksTableEl.appendChild(row);
-        return;
-    }
-    
-    // Today's date for checking overdue tasks
-    const todayFormatted = formatDate(today);
-    
-    filteredTasks.forEach(task => {
-        const row = document.createElement('tr');
-        
-        // Check if task is recurring
-        const isRecurring = task.recurring === true;
-        
-        // If it's recurring, add the recurring-task class
-        if (isRecurring) {
-            row.classList.add('recurring-task');
-        }
-        
-        // Check if task is overdue - recurring tasks are never overdue
-        const isOverdue = !isRecurring && 
-                         new Date(task.date) < new Date(todayFormatted) && 
-                         task.status !== 'completed';
-        
-        // Status styling
-        let statusClass = '';
-        let statusText = '';
-        
-        if (isOverdue) {
-            statusClass = 'status-failed';
-            statusText = 'Overdue';
-            // Add the overdue class to the row
-            row.classList.add('overdue-row');
-        } else {
-            switch(task.status) {
-                case 'completed':
-                    statusClass = 'status-completed';
-                    statusText = 'Completed';
-                    break;
-                case 'pending':
-                    statusClass = 'status-pending';
-                    statusText = 'Pending';
-                    break;
-                case 'failed':
-                    statusClass = 'status-failed';
-                    statusText = 'Failed';
-                    break;
-            }
-        }
-        
-        // Priority styling
-        let priorityClass = '';
-        switch(task.priority) {
-            case 'high':
-                priorityClass = 'priority-high';
-                break;
-            case 'medium':
-                priorityClass = 'priority-medium';
-                break;
-            case 'low':
-                priorityClass = 'priority-low';
-                break;
-        }
-        
-        // Format date for display
-        const displayDate = new Date(task.date).toLocaleDateString('en-US');
-        
-        // Task name with recurring badge if needed
-        const taskNameHtml = isRecurring ? 
-            `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
-            task.name;
-        
-        // MODIFIED: Check if task belongs to current user to enable/disable checkbox
-        const isOwnTask = task.createdBy?.id === currentUser.id;
-        const checkboxAttributes = isOwnTask ? 
-            `class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}` : 
-            `class="checkbox disabled-checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''} disabled`;
-            
-        row.innerHTML = `
-            <td>
-                <input type="checkbox" ${checkboxAttributes}>
-            </td>
-            <td>${taskNameHtml}</td>
-            <td>${displayDate}</td>
-            <td>
-                <span class="priority-badge ${priorityClass}"></span>
-                ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-            </td>
-            <td>
-                <span class="status-badge ${statusClass}">
-                    ${statusText}
-                </span>
-            </td>
-            <td>
-                <span class="user-badge">
-                    <i class="fas fa-user"></i> ${task.createdBy?.name || 'Unknown User'}
-                </span>
-            </td>
-            <td>
-                <div class="table-actions">
-                    <i class="fas fa-edit action-icon edit-task ${isOwnTask ? '' : 'disabled-action'}" data-id="${task.id}"></i>
-                    <i class="fas fa-trash action-icon delete-task ${isOwnTask ? '' : 'disabled-action'}" data-id="${task.id}"></i>
-                </div>
-            </td>
-        `;
-        
-        allTasksTableEl.appendChild(row);
-    });
-    
-    // Add event listeners
-    addTaskEventListeners();
-}
-
-// Function to apply all filters - MODIFIED to exclude current user's tasks and completed tasks
-function applyFilters() {
-    const statusFilter = document.getElementById('statusFilter').value;
-    const priorityFilter = document.getElementById('priorityFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
-    
-    // Today's date for date filtering
-    const todayFormatted = formatDate(today);
-    
-    // Yesterday's date
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayFormatted = formatDate(yesterday);
-    
-    // This week's start (Sunday)
-    const thisWeekStart = new Date(today);
-    thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
-    const thisWeekStartFormatted = formatDate(thisWeekStart);
-    
-    // Start with only other users' PENDING tasks
-    let filteredTasks = tasks.filter(task => 
-        task.createdBy?.id !== currentUser.id && 
-        task.status !== 'completed'
-    );
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-        if (statusFilter === 'overdue') {
-            // Filter overdue tasks (not completed and past due date)
-            filteredTasks = filteredTasks.filter(task => 
-                !task.recurring && // Recurring tasks can't be overdue
-                new Date(task.date) < new Date(todayFormatted) && 
-                task.status !== 'completed'
-            );
-        } else {
-            // Filter by status
-            filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
-        }
-    }
-    
-    // Apply priority filter
-    if (priorityFilter !== 'all') {
-        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
-    }
-    
-    // Apply date filter
-    if (dateFilter !== 'all') {
-        switch(dateFilter) {
-            case 'today':
-                filteredTasks = filteredTasks.filter(task => task.date === todayFormatted);
-                break;
-            case 'yesterday':
-                filteredTasks = filteredTasks.filter(task => task.date === yesterdayFormatted);
-                break;
-            case 'thisWeek':
-                filteredTasks = filteredTasks.filter(task => {
-                    // Check if task date is between this week's start (Sunday) and today
-                    const taskDate = new Date(task.date);
-                    return taskDate >= new Date(thisWeekStartFormatted) && 
-                           taskDate <= new Date(todayFormatted);
-                });
-                break;
-        }
-    }
-    
-    // Render filtered tasks
-    renderFilteredTasks(filteredTasks);
-}
-
-// Setup UI event listeners - MODIFIED to update progress bar on tab change
+// Setup UI event listeners - MODIFIED to remove filter event listeners
 function setupUIEventListeners() {
     // Tab navigation - UPDATED to refresh progress bar on tab switch
     document.querySelectorAll('.tab').forEach(tab => {
@@ -1221,40 +1066,6 @@ function setupUIEventListeners() {
                 });
         }
     });
-    
-    // Search functionality
-    document.getElementById('searchTasks').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        if (searchTerm.trim() === '') {
-            renderAllTasks();
-            return;
-        }
-        
-        const filteredTasks = tasks.filter(task => 
-            task.name.toLowerCase().includes(searchTerm)
-        );
-        
-        renderFilteredTasks(filteredTasks);
-    });
-    
-    // Status filter
-    document.getElementById('statusFilter').addEventListener('change', function() {
-        applyFilters();
-    });
-    
-    // Priority filter
-    document.getElementById('priorityFilter').addEventListener('change', function() {
-        applyFilters();
-    });
-    
-    // Date filter
-    document.getElementById('dateFilter').addEventListener('change', function() {
-        applyFilters();
-    });
-
-    
-    // Add this to the setupUIEventListeners function in ui-controller.js
 
     // Allow Enter key to save task instead of refreshing the page
     const taskForm = document.getElementById('taskForm');
