@@ -371,6 +371,7 @@ function updateProgressBarForActiveTab() {
 }
 
 // Render all tasks - MODIFIED to exclude current user's tasks AND completed tasks
+// ALSO modified to disable checkboxes and actions for tasks not owned by current user
 function renderAllTasks() {
     allTasksTableEl.innerHTML = '';
     
@@ -457,9 +458,11 @@ function renderAllTasks() {
             `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
             task.name;
         
+        // CHANGE: Disable checkbox for tasks that don't belong to current user
+        // REMOVE TOOLTIPS: removed title attributes
         row.innerHTML = `
             <td>
-                <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
+                <input type="checkbox" class="checkbox disabled-checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''} disabled>
             </td>
             <td>${taskNameHtml}</td>
             <td>${displayDate}</td>
@@ -479,9 +482,9 @@ function renderAllTasks() {
             </td>
             <td>
                 <div class="table-actions">
-                    <i class="fas fa-edit action-icon edit-task" data-id="${task.id}"></i>
+                    <i class="fas fa-edit action-icon edit-task disabled-action" data-id="${task.id}"></i>
                     <i class="fas fa-sticky-note action-icon view-notes" data-id="${task.id}" title="${task.notes}"></i>
-                    <i class="fas fa-trash action-icon delete-task" data-id="${task.id}"></i>
+                    <i class="fas fa-trash action-icon delete-task disabled-action" data-id="${task.id}"></i>
                 </div>
             </td>
         `;
@@ -623,15 +626,25 @@ function renderMyTasks() {
     addTaskEventListeners();
 }
 
-// Add event listeners for task actions
+// Add event listeners for task actions - MODIFIED to add permission checks
 function addTaskEventListeners() {
-    // Checkboxes - UPDATED to fade out completed tasks without loading spinner
+    // Checkboxes - UPDATED to add permission check
     document.querySelectorAll('.checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const taskId = this.getAttribute('data-id');
             const task = tasks.find(t => t.id === taskId);
             
             if (task) {
+                // SECURITY CHECK: Only allow completion if task belongs to current user
+                if (task.createdBy?.id !== currentUser.id) {
+                    // Reset checkbox state
+                    this.checked = !this.checked;
+                    
+                    // Show error message
+                    showError('Permission denied: You can only complete your own tasks');
+                    return;
+                }
+                
                 // If checkbox is checked (task is completed)
                 if (this.checked) {
                     // Get the task row element (parent of the checkbox)
@@ -665,23 +678,35 @@ function addTaskEventListeners() {
         });
     });
     
-    // Edit buttons
+    // Edit buttons - UPDATED to add permission check
     document.querySelectorAll('.edit-task').forEach(btn => {
         btn.addEventListener('click', function() {
+            // Skip if this action is disabled
+            if (this.classList.contains('disabled-action')) {
+                showError('Permission denied: You can only edit your own tasks');
+                return;
+            }
+            
             const taskId = this.getAttribute('data-id');
             editTask(taskId);
         });
     });
     
-    // Delete buttons
+    // Delete buttons - UPDATED to add permission check
     document.querySelectorAll('.delete-task').forEach(btn => {
         btn.addEventListener('click', function() {
+            // Skip if this action is disabled
+            if (this.classList.contains('disabled-action')) {
+                showError('Permission denied: You can only delete your own tasks');
+                return;
+            }
+            
             const taskId = this.getAttribute('data-id');
             deleteTask(taskId);
         });
     });
     
-    // View notes
+    // View notes - Everyone can view notes, so no changes needed here
     document.querySelectorAll('.view-notes').forEach(btn => {
         btn.addEventListener('click', function() {
             const taskId = this.getAttribute('data-id');
@@ -701,6 +726,12 @@ function editTask(taskId) {
     const task = tasks.find(t => t.id === taskId);
     
     if (task) {
+        // Additional permission check
+        if (task.createdBy?.id !== currentUser.id) {
+            showError('Permission denied: You can only edit your own tasks');
+            return;
+        }
+        
         document.getElementById('taskId').value = task.id;
         document.getElementById('taskName').value = task.name;
         document.getElementById('taskDate').value = task.date;
@@ -726,6 +757,12 @@ function deleteTask(taskId) {
     
     if (!taskToDelete) {
         showError(`Error: Task with ID ${taskId} not found`);
+        return;
+    }
+    
+    // Additional permission check
+    if (taskToDelete.createdBy?.id !== currentUser.id) {
+        showError('Permission denied: You can only delete your own tasks');
         return;
     }
     
@@ -786,7 +823,7 @@ function deleteTask(taskId) {
     }
 }
 
-// Render filtered tasks - Updated for consistent messaging
+// Render filtered tasks - MODIFIED to add permission restrictions
 function renderFilteredTasks(filteredTasks) {
     allTasksTableEl.innerHTML = '';
     
@@ -865,10 +902,17 @@ function renderFilteredTasks(filteredTasks) {
         const taskNameHtml = isRecurring ? 
             `${task.name} <span class="recurring-badge"><i class="fas fa-sync-alt"></i> Daily</span>` : 
             task.name;
+        
+        // MODIFIED: Check if task belongs to current user to enable/disable checkbox
+        // REMOVED TOOLTIPS: removed title attributes
+        const isOwnTask = task.createdBy?.id === currentUser.id;
+        const checkboxAttributes = isOwnTask ? 
+            `class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}` : 
+            `class="checkbox disabled-checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''} disabled`;
             
         row.innerHTML = `
             <td>
-                <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
+                <input type="checkbox" ${checkboxAttributes}>
             </td>
             <td>${taskNameHtml}</td>
             <td>${displayDate}</td>
@@ -888,9 +932,9 @@ function renderFilteredTasks(filteredTasks) {
             </td>
             <td>
                 <div class="table-actions">
-                    <i class="fas fa-edit action-icon edit-task" data-id="${task.id}"></i>
+                    <i class="fas fa-edit action-icon edit-task ${isOwnTask ? '' : 'disabled-action'}" data-id="${task.id}"></i>
                     <i class="fas fa-sticky-note action-icon view-notes" data-id="${task.id}" title="${task.notes}"></i>
-                    <i class="fas fa-trash action-icon delete-task" data-id="${task.id}"></i>
+                    <i class="fas fa-trash action-icon delete-task ${isOwnTask ? '' : 'disabled-action'}" data-id="${task.id}"></i>
                 </div>
             </td>
         `;
@@ -1051,6 +1095,12 @@ function setupUIEventListeners() {
             // Edit existing task
             const task = tasks.find(t => t.id === taskId);
             if (task) {
+                // Permission check for editing
+                if (task.createdBy?.id !== currentUser.id) {
+                    showError('Permission denied: You can only edit your own tasks');
+                    return;
+                }
+                
                 // Store original name for duplicate check logic
                 const originalName = task.name;
                 
