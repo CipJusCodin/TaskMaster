@@ -1419,3 +1419,50 @@ input[type="date"] {
 .dashboard-actions {
     display: none; /* Hide the old container */
 }
+
+/* Add these styles to styles.css */
+
+/* Date header styling for completed tasks */
+.completed-date-header {
+    background: linear-gradient(135deg, rgba(174, 88, 255, 0.1), rgba(174, 88, 255, 0.05));
+    padding: 0.5rem 1rem;
+    margin: 1rem 0 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.completed-date-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+/* Overdue completed task styling */
+.overdue-task-item {
+    border-left: 3px solid var(--danger-color) !important;
+    background: linear-gradient(to right, rgba(255, 76, 106, 0.05), rgba(255, 76, 106, 0.02)) !important;
+}
+
+.overdue-label {
+    color: var(--danger-color);
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+/* Add due date to meta items */
+.completed-task-date {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Adjust the completed modal to be larger */
+.completed-modal-content {
+    max-width: 850px;
+    max-height: 85vh;
+}
+
+/* When there are multiple days, add some spacing between days */
+.completed-task-item:first-child {
+    margin-top: 0.5rem;
+}

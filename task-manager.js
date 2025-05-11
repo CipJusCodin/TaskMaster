@@ -148,10 +148,15 @@ function setupTasksListener() {
     return unsubscribe;
 }
 
-// Check if a task is a duplicate (same name, same user)
+// Check if a task is a duplicate (same name, same user, not completed)
 function isDuplicateTask(taskToCheck) {
-    // Check all existing tasks
+    // Check only against non-completed existing tasks
     return tasks.some(existingTask => {
+        // Skip completed tasks in duplicate check
+        if (existingTask.status === 'completed') {
+            return false;
+        }
+        
         // Compare task name (case-insensitive)
         const sameTaskName = existingTask.name.toLowerCase() === taskToCheck.name.toLowerCase();
         

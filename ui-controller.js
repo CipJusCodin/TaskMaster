@@ -212,97 +212,177 @@ function cleanupCompletedTasks() {
         });
 }
 
-// Function to show completed tasks modal
+// Function to show completed tasks modal - IMPROVED for week history with day formatting
 function showCompletedTasksModal() {
     const completedTasksModal = document.getElementById('completedTasksModal');
     const completedTasksList = document.getElementById('completedTasksList');
-    const todayFormatted = formatDate(today);
     
     // Clear previous content
     completedTasksList.innerHTML = '';
     
-    // Get today's completed tasks
-    let todayCompletedTasks = [];
+    // Get today's date and date from 7 days ago
+    const today = new Date();
+    const todayFormatted = formatDate(today);
+    
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoFormatted = formatDate(oneWeekAgo);
+    
+    // Get completed tasks from the past week
+    let recentCompletedTasks = [];
     
     // Check which tab is active to determine which completed tasks to show
     const activeTabId = document.querySelector('.tab.active').getAttribute('data-target');
     if (activeTabId === 'myTasks') {
         // Show current user's completed tasks
-        todayCompletedTasks = tasks.filter(task => 
-            task.date === todayFormatted && 
+        recentCompletedTasks = tasks.filter(task => 
             task.status === 'completed' &&
-            task.createdBy?.id === currentUser.id
+            task.createdBy?.id === currentUser.id &&
+            task.completedAt && // Must have a completion timestamp
+            new Date(task.completedAt) >= oneWeekAgo // Completed within the last week
         );
     } else {
         // Show other users' completed tasks
-        todayCompletedTasks = tasks.filter(task => 
-            task.date === todayFormatted && 
+        recentCompletedTasks = tasks.filter(task => 
             task.status === 'completed' &&
-            task.createdBy?.id !== currentUser.id
+            task.createdBy?.id !== currentUser.id &&
+            task.completedAt && // Must have a completion timestamp
+            new Date(task.completedAt) >= oneWeekAgo // Completed within the last week
         );
     }
     
+    // Update the title to reflect week view
+    const completedModalTitle = document.querySelector('.completed-modal-title');
+    if (completedModalTitle) {
+        if (activeTabId === 'myTasks') {
+            completedModalTitle.innerHTML = '<i class="fas fa-history"></i> My Completed Tasks (Last 7 Days)';
+        } else {
+            completedModalTitle.innerHTML = '<i class="fas fa-history"></i> Others\' Completed Tasks (Last 7 Days)';
+        }
+    }
+    
     // If no completed tasks, show a message
-    if (todayCompletedTasks.length === 0) {
+    if (recentCompletedTasks.length === 0) {
         completedTasksList.innerHTML = `
             <div class="no-completed-tasks">
                 <i class="fas fa-check-circle"></i>
-                <p>No completed tasks for today yet</p>
+                <p>No completed tasks in the past week</p>
             </div>
         `;
     } else {
-        // Sort completed tasks by completion time (most recent first)
-        todayCompletedTasks.sort((a, b) => {
-            if (!a.completedAt) return 1;
-            if (!b.completedAt) return -1;
-            return new Date(b.completedAt) - new Date(a.completedAt);
-        });
+        // Group tasks by date
+        const tasksByDate = {};
         
-        // Add each completed task to the list
-        todayCompletedTasks.forEach(task => {
-            const completedTime = task.completedAt ? new Date(task.completedAt) : null;
-            const timeString = completedTime ? completedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unknown';
+        // Process each task to group by date
+        recentCompletedTasks.forEach(task => {
+            // Get the completion date (formatted as YYYY-MM-DD)
+            const completionDate = task.completedAt ? formatDate(new Date(task.completedAt)) : 'Unknown';
             
-            // Priority styling
-            let priorityClass = '';
-            switch(task.priority) {
-                case 'high':
-                    priorityClass = 'priority-high';
-                    break;
-                case 'medium':
-                    priorityClass = 'priority-medium';
-                    break;
-                case 'low':
-                    priorityClass = 'priority-low';
-                    break;
+            // Create array for this date if it doesn't exist
+            if (!tasksByDate[completionDate]) {
+                tasksByDate[completionDate] = [];
             }
             
-            // Create task element
-            const taskElement = document.createElement('div');
-            taskElement.className = 'completed-task-item';
-            taskElement.innerHTML = `
-                <div class="completed-task-checkbox">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="completed-task-info">
-                    <div class="completed-task-name">${task.name}</div>
-                    <div class="completed-task-meta">
-                        <div class="completed-task-time">
-                            <i class="fas fa-clock"></i> ${timeString}
-                        </div>
-                        <div class="completed-task-priority">
-                            <span class="completed-priority-badge ${priorityClass}"></span>
-                            ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                        </div>
-                        ${task.createdBy?.id !== currentUser.id ? 
-                            `<div class="completed-task-user">
-                                <i class="fas fa-user"></i> ${task.createdBy?.name || 'Unknown User'}
-                            </div>` : ''}
-                    </div>
-                </div>
-            `;
+            // Add task to its date group
+            tasksByDate[completionDate].push(task);
+        });
+        
+        // Get dates sorted from newest to oldest
+        const sortedDates = Object.keys(tasksByDate).sort().reverse();
+        
+        // Create a section for each date
+        sortedDates.forEach(dateStr => {
+            // Format the date for display (e.g., "Monday, May 6, 2025")
+            const displayDate = new Date(dateStr);
+            const formattedDateStr = displayDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
             
-            completedTasksList.appendChild(taskElement);
+            // Determine if this is today, yesterday, or another day
+            let dateLabel = formattedDateStr;
+            if (dateStr === formatDate(today)) {
+                dateLabel = `Today (${formattedDateStr})`;
+            } else {
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                if (dateStr === formatDate(yesterday)) {
+                    dateLabel = `Yesterday (${formattedDateStr})`;
+                }
+            }
+            
+            // Create date header
+            const dateHeader = document.createElement('div');
+            dateHeader.className = 'completed-date-header';
+            dateHeader.innerHTML = `<h3>${dateLabel}</h3>`;
+            completedTasksList.appendChild(dateHeader);
+            
+            // Sort tasks for this date by completion time (most recent first)
+            const tasksForDate = tasksByDate[dateStr].sort((a, b) => {
+                if (!a.completedAt) return 1;
+                if (!b.completedAt) return -1;
+                return new Date(b.completedAt) - new Date(a.completedAt);
+            });
+            
+            // Add each task for this date
+            tasksForDate.forEach(task => {
+                const completedTime = task.completedAt ? new Date(task.completedAt) : null;
+                const timeString = completedTime ? completedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unknown';
+                
+                // Check if task was overdue when completed
+                const taskDueDate = new Date(task.date);
+                const completionDate = new Date(task.completedAt);
+                const wasOverdue = !task.recurring && completionDate > taskDueDate;
+                
+                // Priority styling
+                let priorityClass = '';
+                switch(task.priority) {
+                    case 'high':
+                        priorityClass = 'priority-high';
+                        break;
+                    case 'medium':
+                        priorityClass = 'priority-medium';
+                        break;
+                    case 'low':
+                        priorityClass = 'priority-low';
+                        break;
+                }
+                
+                // Create task element
+                const taskElement = document.createElement('div');
+                taskElement.className = 'completed-task-item';
+                
+                // Add overdue class if task was overdue when completed
+                if (wasOverdue) {
+                    taskElement.classList.add('overdue-task-item');
+                }
+                
+                taskElement.innerHTML = `
+                    <div class="completed-task-checkbox">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="completed-task-info">
+                        <div class="completed-task-name">${task.name}</div>
+                        <div class="completed-task-meta">
+                            <div class="completed-task-time">
+                                <i class="fas fa-clock"></i> ${timeString}
+                            </div>
+                            <div class="completed-task-priority">
+                                <span class="completed-priority-badge ${priorityClass}"></span>
+                                ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                            </div>
+                            ${task.createdBy?.id !== currentUser.id ? 
+                                `<div class="completed-task-user">
+                                    <i class="fas fa-user"></i> ${task.createdBy?.name || 'Unknown User'}
+                                </div>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                completedTasksList.appendChild(taskElement);
+            });
         });
     }
     
@@ -339,65 +419,97 @@ function updateTasksUI() {
     renderMyTasks();
 }
 
-// Update dashboard stats - MODIFIED for contextual progress bar
+// Update dashboard stats - MODIFIED for all contextual stats
 function updateStats() {
     const todayFormatted = formatDate(today);
+    const activeTabId = document.querySelector('.tab.active').getAttribute('data-target');
     
-    // Calculate overall task stats
-    const total = tasks.length;
-    const completed = tasks.filter(task => task.status === 'completed').length;
-    const pending = tasks.filter(task => task.status === 'pending').length;
+    // Filter tasks based on active tab
+    let filteredTasks = [];
+    if (activeTabId === 'myTasks') {
+        // For My Tasks tab - only current user's tasks
+        filteredTasks = tasks.filter(task => task.createdBy?.id === currentUser.id);
+    } else {
+        // For All Tasks tab - only other users' tasks
+        filteredTasks = tasks.filter(task => task.createdBy?.id !== currentUser.id);
+    }
     
-    // Exclude recurring tasks from overdue count
-    const overdue = tasks.filter(task => 
+    // Calculate today's + overdue tasks (not completed)
+    const dueTasks = filteredTasks.filter(task => 
+        (task.date === todayFormatted) || // Due today
+        (!task.recurring && new Date(task.date) < new Date(todayFormatted) && task.status !== 'completed') // Overdue
+    );
+    
+    // Calculate other stats based on filtered tasks
+    const completed = filteredTasks.filter(task => task.status === 'completed').length;
+    const pending = filteredTasks.filter(task => task.status === 'pending').length;
+    
+    // Calculate overdue (only non-recurring, non-completed tasks with due dates in the past)
+    const overdue = filteredTasks.filter(task => 
         !task.recurring && // Only non-recurring tasks can be overdue
         new Date(task.date) < new Date(todayFormatted) && 
         task.status !== 'completed'
     ).length;
     
     // Update the dashboard stats
-    totalTasksEl.textContent = total;
+    totalTasksEl.textContent = dueTasks.length;
     completedTasksEl.textContent = completed;
     pendingTasksEl.textContent = pending;
     overdueTasksEl.textContent = overdue;
+    
+    // Update the label dynamically to reflect content
+    const totalTasksLabelEl = document.querySelector('.stat-card.primary .stat-label');
+    if (totalTasksLabelEl) {
+        if (activeTabId === 'myTasks') {
+            totalTasksLabelEl.textContent = "My Due Tasks";
+        } else {
+            totalTasksLabelEl.textContent = "Others' Due Tasks";
+        }
+    }
     
     // Calculate progress for the active tab
     updateProgressBarForActiveTab();
 }
 
-// Updated progress bar calculation to include completed tasks
+// Updated progress bar calculation to include both today's and overdue tasks
 function updateProgressBarForActiveTab() {
     const todayFormatted = formatDate(today);
     const activeTabId = document.querySelector('.tab.active').getAttribute('data-target');
     
-    let todayTasks = [];
-    let todayCompleted = 0;
+    let relevantTasks = [];
+    let completedCount = 0;
     
+    // Filter tasks based on active tab
+    let filteredTasks = [];
     if (activeTabId === 'myTasks') {
-        // For My Tasks tab - all current user's tasks for today (including completed ones)
-        todayTasks = tasks.filter(task => 
-            task.date === todayFormatted && 
-            task.createdBy?.id === currentUser.id
-        );
-        todayCompleted = todayTasks.filter(task => task.status === 'completed').length;
+        // For My Tasks tab - only current user's tasks
+        filteredTasks = tasks.filter(task => task.createdBy?.id === currentUser.id);
     } else {
-        // For All Tasks tab - all other users' tasks for today (including completed ones)
-        todayTasks = tasks.filter(task => 
-            task.date === todayFormatted && 
-            task.createdBy?.id !== currentUser.id
-        );
-        todayCompleted = todayTasks.filter(task => task.status === 'completed').length;
+        // For All Tasks tab - only other users' tasks
+        filteredTasks = tasks.filter(task => task.createdBy?.id !== currentUser.id);
     }
     
+    // Find today's tasks and overdue tasks
+    relevantTasks = filteredTasks.filter(task => 
+        task.date === todayFormatted || // Due today
+        (!task.recurring && new Date(task.date) < new Date(todayFormatted)) // Or overdue (non-recurring)
+    );
+    
+    // Count completed tasks from the relevant set
+    completedCount = relevantTasks.filter(task => task.status === 'completed').length;
+    
     // Calculate the progress percentage
-    const todayProgress = todayTasks.length > 0 
-        ? (todayCompleted / todayTasks.length) * 100 
+    const progressPercentage = relevantTasks.length > 0 
+        ? (completedCount / relevantTasks.length) * 100 
         : 0;
     
-    console.log(`Progress for ${activeTabId}: ${todayCompleted}/${todayTasks.length} = ${todayProgress.toFixed(1)}%`);
+    console.log(`Progress for ${activeTabId}: ${completedCount}/${relevantTasks.length} = ${progressPercentage.toFixed(1)}%`);
     
     // Update the progress bar
-    progressBarEl.style.width = `${todayProgress}%`;
+    progressBarEl.style.width = `${progressPercentage}%`;
+    
+    // Keep original header as "Today's Progress"
+    // No need to update the progress header text
 }
 
 // Render my tasks - MODIFIED to exclude completed tasks from UI and sort tasks
@@ -869,9 +981,9 @@ function deleteTask(taskId) {
     }
 }
 
-// Setup UI event listeners - MODIFIED to remove filter event listeners
+// Setup UI event listeners - MODIFIED to update stats when tab changes
 function setupUIEventListeners() {
-    // Tab navigation - UPDATED to refresh progress bar on tab switch
+    // Tab navigation - UPDATED to refresh stats and progress bar on tab switch
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', function() {
             // Remove active class from all tabs
@@ -885,7 +997,8 @@ function setupUIEventListeners() {
             const targetPanel = this.getAttribute('data-target');
             document.getElementById(targetPanel).classList.add('active');
             
-            // Update progress bar for the active tab
+            // Update stats for the active tab
+            updateStats(); // Added this line to update stats when tab changes
             updateProgressBarForActiveTab();
         });
     });
